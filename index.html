@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora LECAPS · En Vivo</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0a0e17; --surface:#111827; --surface2:#1a2235; --border:#1e2d45;
+    --accent:#00d4ff; --accent2:#00ff9d; --warn:#ff6b35;
+    --text:#e2e8f0; --muted:#64748b; --green:#00ff9d; --red:#ff4757;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh;}
+  body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;
+    background:radial-gradient(ellipse at 20% 20%,rgba(0,212,255,.04) 0%,transparent 50%),
+               radial-gradient(ellipse at 80% 80%,rgba(0,255,157,.03) 0%,transparent 50%);
+    pointer-events:none;z-index:0;}
+  .wrap{max-width:1300px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}
+  header{padding:32px 0 24px;border-bottom:1px solid var(--border);margin-bottom:28px;}
+  .hrow{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+  h1{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;
+     background:linear-gradient(135deg,var(--accent),var(--accent2));
+     -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  .badge{display:flex;align-items:center;gap:8px;background:rgba(0,255,157,.08);
+         border:1px solid rgba(0,255,157,.2);border-radius:20px;padding:6px 14px;
+         font-size:11px;color:var(--accent2);letter-spacing:1px;}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);animation:pu 1.5s infinite;}
+  @keyframes pu{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:22px;}
+  .ptitle{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;color:var(--accent);
+          letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;}
+  .ga{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:22px;}
+  label.lbl{display:block;font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px;}
+  input[type=number],select{
+    width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;
+    padding:10px 14px;color:var(--text);font-family:'JetBrains Mono',monospace;
+    font-size:13px;outline:none;transition:border-color .2s;}
+  input:focus,select:focus{border-color:var(--accent);}
+  select option{background:var(--surface);}
+  .hint{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4;}
+  .btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;
+       font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;
+       letter-spacing:1px;text-transform:uppercase;transition:all .2s;white-space:nowrap;}
+  .bp{background:linear-gradient(135deg,var(--accent),#0099bb);color:#0a0e17;}
+  .bp:hover{opacity:.85;transform:translateY(-1px);}
+  .bp:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  .bs{background:var(--surface2);border:1px solid var(--border);color:var(--text);}
+  .bs:hover{border-color:var(--accent);color:var(--accent);}
+  .brow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .sb{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:8px;font-size:12px;margin-bottom:18px;}
+  .sok{background:rgba(0,255,157,.08);border:1px solid rgba(0,255,157,.2);color:var(--accent2);}
+  .ser{background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);color:var(--red);}
+  .sin{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);color:var(--accent);}
+  .sc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;}
+  .sl{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;}
+  .sv{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--accent2);}
+  .sv.a{color:var(--accent);} .sv.w{color:var(--warn);}
+  .th{display:flex;align-items:center;justify-content:space-between;
+      padding:18px 22px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px;}
+  .ts{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead th{padding:11px 15px;text-align:left;font-size:10px;color:var(--muted);
+           letter-spacing:1.5px;text-transform:uppercase;background:var(--bg);
+           border-bottom:1px solid var(--border);white-space:nowrap;}
+  tbody tr{border-bottom:1px solid rgba(30,45,69,.5);transition:background .15s;}
+  tbody tr:hover{background:rgba(0,212,255,.03);}
+  tbody tr:last-child{border-bottom:none;}
+  td{padding:13px 15px;white-space:nowrap;}
+  .tk{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);}
+  .rc{color:var(--accent2);font-weight:600;} .rc.best{color:var(--green);font-size:15px;}
+  .dc{color:var(--muted);} .pc{color:var(--warn);}
+  .sr{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:16px;display:none;}
+  .sr.on{display:block;}
+  .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;}
+  .si-lbl{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:3px;}
+  .si-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--accent2);}
+  .sec-title{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:10px;}
+  .sec-bruta{color:var(--accent);}
+  .sec-costos{color:var(--warn);}
+  .sec-neta{color:var(--accent2);}
+  .divider{border-top:1px solid var(--border);margin:16px 0;}
+  .cc{height:270px;position:relative;}
+  footer{text-align:center;padding:22px 0;border-top:1px solid var(--border);font-size:11px;color:var(--muted);letter-spacing:1px;}
+  .spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(0,212,255,.2);
+        border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .hidden{display:none!important;}
+  .loading-screen{position:fixed;inset:0;background:var(--bg);z-index:100;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+  .loading-screen h2{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .loading-screen p{font-size:12px;color:var(--muted);}
+  .big-spin{width:40px;height:40px;border:3px solid rgba(0,212,255,.2);
+            border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;}
+  @media(max-width:700px){.sim-grid{grid-template-columns:1fr!important;}}
+</style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="big-spin"></div>
+  <h2>Cargando LECAPS</h2>
+  <p id="loadingMsg">Conectando...</p>
+</div>
+
+<div class="wrap" id="mainContent" style="display:none">
+  <header>
+    <div class="hrow">
+      <div><h1>LECAPS</h1><div class="sub">Calculadora · Argentina</div></div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span id="lu" style="font-size:11px;color:var(--muted)">–</span>
+        <div class="badge"><div class="dot"></div>EN VIVO</div>
+      </div>
+    </div>
+  </header>
+
+  <div id="statusBar" class="hidden"></div>
+
+  <!-- STATS -->
+  <div class="ga">
+    <div class="sc"><div class="sl">TEA Promedio</div><div class="sv a" id="st">–</div></div>
+    <div class="sc"><div class="sl">TEM Promedio</div><div class="sv" id="sm">–</div></div>
+    <div class="sc"><div class="sl">TNA Promedio</div><div class="sv w" id="sn">–</div></div>
+    <div class="sc"><div class="sl">Mejor TEA</div><div class="sv" id="sb2">–</div></div>
+    <div class="sc"><div class="sl">Instrumentos</div><div class="sv a" id="sc">–</div></div>
+  </div>
+
+  <!-- SIMULADOR -->
+  <div class="card">
+    <div class="ptitle">💰 Simulador de Inversión</div>
+
+    <!-- Fila 1: monto e instrumento -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;" class="sim-grid">
+      <div>
+        <label class="lbl">Monto a invertir ($)</label>
+        <input type="number" id="sm2" value="1000000" placeholder="1000000">
+      </div>
+      <div>
+        <label class="lbl">Instrumento</label>
+        <select id="ss"><option value="">— Seleccionar —</option></select>
+      </div>
+    </div>
+
+    <!-- Fila 2: costos -->
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;" class="sim-grid">
+      <div>
+        <label class="lbl">Comisión del intermediario (%)</label>
+        <input type="number" id="comision" value="0.50" step="0.01" min="0" placeholder="0.50">
+        <div class="hint">Se aplica sobre el monto de compra</div>
+      </div>
+      <div>
+        <label class="lbl">Imp. Débito y Crédito (%)</label>
+        <input type="number" id="idc" value="0.60" step="0.01" min="0" placeholder="0.60">
+        <div class="hint">Se cobra en compra y en amortización (se aplica 2 veces)</div>
+      </div>
+      <button class="btn bp" onclick="simular()">Calcular</button>
+    </div>
+
+    <!-- RESULTADO -->
+    <div class="sr" id="sres">
+
+      <!-- BRUTO -->
+      <div class="sec-title sec-bruta">Resultado Bruto</div>
+      <div class="sg" style="margin-bottom:0">
+        <div><span class="si-lbl">Monto invertido</span><div class="si-val" id="i1">–</div></div>
+        <div><span class="si-lbl">Pago al vencimiento</span><div class="si-val" id="i2">–</div></div>
+        <div><span class="si-lbl">Ganancia bruta</span><div class="si-val" id="i3">–</div></div>
+        <div><span class="si-lbl">Días restantes</span><div class="si-val" id="i4">–</div></div>
+        <div><span class="si-lbl">TEA bruta</span><div class="si-val" id="i5">–</div></div>
+        <div><span class="si-lbl">TEM bruta</span><div class="si-val" id="i6">–</div></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- COSTOS -->
+      <div class="sec-title sec-costos">Costos</div>
+      <div class="sg" style="margin-bottom:0">
+        <div><span class="si-lbl">Comisión intermediario</span><div class="si-val" style="color:var(--warn)" id="c1">–</div></div>
+        <div><span class="si-lbl">Imp. D&C en compra</span><div class="si-val" style="color:var(--warn)" id="c2">–</div></div>
+        <div><span class="si-lbl">Imp. D&C en amortización</span><div class="si-val" style="color:var(--warn)" id="c3">–</div></div>
+        <div><span class="si-lbl">Total costos</span><div class="si-val" style="color:var(--red)" id="c4">–</div></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- NETO -->
+      <div class="sec-title sec-neta">Resultado Neto</div>
+      <div class="sg">
+        <div><span class="si-lbl">Ganancia neta</span><div class="si-val" id="n1">–</div></div>
+        <div><span class="si-lbl">TEA neta</span><div class="si-val" id="n2">–</div></div>
+        <div><span class="si-lbl">TEM neta</span><div class="si-val" id="n3">–</div></div>
+        <div><span class="si-lbl">Rendimiento neto total</span><div class="si-val" id="n4">–</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TABLA -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:22px;">
+    <div class="th">
+      <div class="ptitle" style="margin:0">📊 Instrumentos LECAPS</div>
+      <div class="brow">
+        <span id="spl" class="hidden"><span class="spin"></span> Actualizando...</span>
+        <button class="btn bs" style="padding:7px 14px;font-size:11px;" onclick="cargarPrecios()" id="br">↻ Actualizar</button>
+      </div>
+    </div>
+    <div class="ts">
+      <table>
+        <thead><tr>
+          <th>Ticker</th><th>Vencimiento</th><th>Días</th><th>Meses</th>
+          <th>Precio (Px)</th><th>Pago Final</th>
+          <th>TNA</th><th>TEM</th><th>TEA</th>
+        </tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CURVA -->
+  <div class="card">
+    <div class="ptitle" style="margin-bottom:18px">📈 Curva de Rendimiento</div>
+    <div class="cc"><canvas id="ch"></canvas></div>
+  </div>
+
+  <footer>
+    Calculadora LECAPS · Diseño Claude · <span id="yr"></span>
+    <div style="max-width:780px;margin:14px auto 0;font-size:10px;color:var(--muted);line-height:1.8;opacity:0.7;">
+      <strong style="color:var(--muted)">AVISO LEGAL:</strong> La información presentada en esta calculadora tiene carácter exclusivamente informativo y educativo.
+      No constituye asesoramiento financiero, legal ni impositivo, ni debe interpretarse como una recomendación de compra o venta de ningún instrumento financiero.
+      Los datos son obtenidos de fuentes públicas de mercado y pueden contener errores, demoras o inexactitudes.
+      El autor de esta herramienta no garantiza la exactitud, completitud ni actualidad de la información, y no asume responsabilidad alguna por decisiones de inversión tomadas con base en estos datos.
+      Toda decisión de inversión es de exclusiva responsabilidad del inversor. Consulte siempre con un asesor financiero habilitado antes de invertir.
+    </div>
+  </footer>
+</div>
+
+<script>
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+const API = 'https://lecaps-api-production.up.railway.app';
+let rows = [], graf = null;
+
+function dias(v){ const h=new Date(); h.setHours(0,0,0,0); return Math.max(0,Math.round((new Date(v+'T00:00:00')-h)/86400000)); }
+function tasas(px,pf,d){ if(!px||!pf||d<=0) return {}; const r=pf/px,tea=(Math.pow(r,365/d)-1)*100,tem=(Math.pow(1+tea/100,1/12)-1)*100; return {tea,tem,tna:tem*12}; }
+function pct(n,d=2){ return n==null||isNaN(n)?'–':n.toFixed(d).replace('.',',')+' %'; }
+function ars(n){ return n!=null?'$ '+Math.round(n).toLocaleString('es-AR'):'–'; }
+
+function setS(msg,t){
+  const el=document.getElementById('statusBar');
+  el.className=`sb s${t}`; el.innerHTML=msg; el.classList.remove('hidden');
+}
+
+async function cargarPrecios(){
+  document.getElementById('spl').classList.remove('hidden');
+  document.getElementById('br').disabled=true;
+  try {
+    const resp = await fetch(`${API}/lecaps`);
+    if(!resp.ok) throw new Error('Error del servidor');
+    const data = await resp.json();
+    const instrumentos = data.instrumentos || [];
+    if(!instrumentos.length) throw new Error('No se recibieron instrumentos');
+
+    rows = instrumentos.map(x => {
+      const d = dias(x.vencimiento);
+      const t = tasas(x.precio, x.pagoFinal, d);
+      return { ...x, d, mes: (d/30.4).toFixed(1), ...t };
+    }).filter(x => x.d > 0).sort((a,b) => a.d - b.d);
+
+    renderT(rows); renderS(rows); renderC(rows); renderSS(rows);
+    setS(`✅ ${rows.length} instrumentos actualizados`, 'ok');
+    document.getElementById('lu').textContent =
+      'Act: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  } catch(e) {
+    setS(`❌ Error: ${e.message}`, 'er');
+  } finally {
+    document.getElementById('spl').classList.add('hidden');
+    document.getElementById('br').disabled=false;
+  }
+}
+
+function renderT(data){
+  const tb=document.getElementById('tb');
+  if(!data.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:48px 0">Sin datos</td></tr>';return;}
+  const best=Math.max(...data.filter(r=>r.tea!=null).map(r=>r.tea));
+  tb.innerHTML=data.map((r)=>`<tr>
+    <td><span class="tk">${r.ticker}</span></td>
+    <td>${r.vencimiento}</td>
+    <td class="dc">${r.d}</td>
+    <td class="dc">${r.mes}</td>
+    <td class="pc">${r.precio ? r.precio.toFixed(3) : '–'}</td>
+    <td class="pc">${r.pagoFinal ? r.pagoFinal.toFixed(4) : '–'}</td>
+    <td class="rc">${pct(r.tna)}</td>
+    <td class="rc">${pct(r.tem)}</td>
+    <td class="rc ${r.tea===best&&r.tea!=null?'best':''}">${pct(r.tea)} ${r.tea===best&&r.tea!=null?'★':''}</td>
+  </tr>`).join('');
+}
+
+function renderS(data){
+  const v=data.filter(r=>r.tea!=null); if(!v.length)return;
+  const avg=k=>v.reduce((s,r)=>s+r[k],0)/v.length;
+  document.getElementById('st').textContent=pct(avg('tea'));
+  document.getElementById('sm').textContent=pct(avg('tem'));
+  document.getElementById('sn').textContent=pct(avg('tna'));
+  document.getElementById('sb2').textContent=pct(Math.max(...v.map(r=>r.tea)));
+  document.getElementById('sc').textContent=v.length;
+}
+
+function renderC(data){
+  const v=data.filter(r=>r.tea!=null).sort((a,b)=>a.d-b.d);
+  const ctx=document.getElementById('ch').getContext('2d');
+  if(graf)graf.destroy();
+  graf=new Chart(ctx,{type:'line',data:{
+    labels:v.map(r=>r.ticker),
+    datasets:[
+      {label:'TEA %',data:v.map(r=>+r.tea.toFixed(2)),borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,.07)',fill:true,tension:.35,pointRadius:5,pointHoverRadius:8,pointBackgroundColor:'#00d4ff',borderWidth:2},
+      {label:'TNA %',data:v.map(r=>+r.tna.toFixed(2)),borderColor:'#ff6b35',backgroundColor:'transparent',fill:false,tension:.35,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:'#ff6b35',borderWidth:2,borderDash:[4,4]},
+    ]
+  },options:{
+    responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:11}}},
+      tooltip:{backgroundColor:'#1a2235',borderColor:'#1e2d45',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8',
+               titleFont:{family:'Syne',size:13},bodyFont:{family:'JetBrains Mono',size:12},
+               callbacks:{label:c=>` ${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`}}
+    },
+    scales:{
+      x:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:10},maxRotation:45},grid:{color:'rgba(30,45,69,.5)'}},
+      y:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:11},callback:v=>v+'%'},grid:{color:'rgba(30,45,69,.5)'}}
+    }
+  }});
+}
+
+function renderSS(data){
+  const sel=document.getElementById('ss');
+  sel.innerHTML='<option value="">— Seleccionar —</option>'+
+    data.filter(r=>r.tea!=null).map(r=>`<option value="${r.ticker}">${r.ticker} · ${r.vencimiento} · TEA ${pct(r.tea)}</option>`).join('');
+}
+
+function simular(){
+  const m     = parseFloat(document.getElementById('sm2').value);
+  const tk    = document.getElementById('ss').value;
+  const pcom  = parseFloat(document.getElementById('comision').value) / 100 || 0;
+  const pidc  = parseFloat(document.getElementById('idc').value) / 100 || 0;
+
+  if(!m || !tk) return;
+  const r = rows.find(x => x.ticker === tk);
+  if(!r?.precio) return;
+
+  // ── Cálculo bruto ────────────────────────────────────────────────────────
+  const lams    = Math.floor((m / r.precio) * 100) / 100;
+  const inv     = lams * r.precio;          // lo que realmente pagás por los títulos
+  const pagoBruto = lams * r.pagoFinal;     // lo que recibís al vencimiento (bruto)
+  const ganBruta  = pagoBruto - inv;
+
+  // ── Costos ───────────────────────────────────────────────────────────────
+  // Comisión: % sobre el monto de compra
+  const costoComision = inv * pcom;
+
+  // Imp D&C: se cobra sobre el monto de compra Y sobre el pago de amortización
+  const idcCompra      = inv * pidc;
+  const idcAmortizacion = pagoBruto * pidc;
+  const totalCostos    = costoComision + idcCompra + idcAmortizacion;
+
+  // ── Resultado neto ───────────────────────────────────────────────────────
+  // Costo efectivo de entrada = lo que pagás + todos los costos al comprar
+  const costoEntrada  = inv + costoComision + idcCompra;
+  // Cobro neto al vencimiento = pago bruto menos lo que te descuentan al amortizar
+  const cobroNeto     = pagoBruto - idcAmortizacion;
+  const ganNeta       = cobroNeto - costoEntrada;
+  const rendNeto      = ganNeta / costoEntrada * 100;
+
+  // TEA y TEM netas
+  const teaNeta = (Math.pow(cobroNeto / costoEntrada, 365 / r.d) - 1) * 100;
+  const temNeta = (Math.pow(1 + teaNeta / 100, 1 / 12) - 1) * 100;
+
+  // ── Render ───────────────────────────────────────────────────────────────
+  document.getElementById('i1').textContent = ars(inv);
+  document.getElementById('i2').textContent = ars(pagoBruto);
+  document.getElementById('i3').textContent = ars(ganBruta);
+  document.getElementById('i4').textContent = r.d + ' días';
+  document.getElementById('i5').textContent = pct(r.tea);
+  document.getElementById('i6').textContent = pct(r.tem);
+
+  document.getElementById('c1').textContent = ars(costoComision);
+  document.getElementById('c2').textContent = ars(idcCompra);
+  document.getElementById('c3').textContent = ars(idcAmortizacion);
+  document.getElementById('c4').textContent = ars(totalCostos);
+
+  document.getElementById('n1').textContent = ars(ganNeta);
+  document.getElementById('n2').textContent = pct(teaNeta);
+  document.getElementById('n3').textContent = pct(temNeta);
+  document.getElementById('n4').textContent = pct(rendNeto);
+
+  document.getElementById('sres').classList.add('on');
+}
+
+(async () => {
+  try {
+    document.getElementById('loadingMsg').textContent = 'Obteniendo precios...';
+    await cargarPrecios();
+  } finally {
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('mainContent').style.display = 'block';
+  }
+})();
+
+setInterval(cargarPrecios, 5 * 60 * 1000);
+</script>
+</body>
+</html>
