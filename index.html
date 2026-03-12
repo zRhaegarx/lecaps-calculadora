@@ -18,16 +18,18 @@
     background:radial-gradient(ellipse at 20% 20%,rgba(0,212,255,.04) 0%,transparent 50%),
                radial-gradient(ellipse at 80% 80%,rgba(0,255,157,.03) 0%,transparent 50%);
     pointer-events:none;z-index:0;}
-  .wrap{max-width:1300px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}
+  .wrap{max-width:1400px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}
   header{padding:32px 0 24px;border-bottom:1px solid var(--border);margin-bottom:28px;}
   .hrow{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
   h1{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;
      background:linear-gradient(135deg,var(--accent),var(--accent2));
      -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
   .sub{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  .badges{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .badge{display:flex;align-items:center;gap:8px;background:rgba(0,255,157,.08);
          border:1px solid rgba(0,255,157,.2);border-radius:20px;padding:6px 14px;
          font-size:11px;color:var(--accent2);letter-spacing:1px;}
+  .badge-mep{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);color:var(--accent);}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);animation:pu 1.5s infinite;}
   @keyframes pu{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:22px;}
@@ -66,6 +68,7 @@
   thead th{padding:11px 15px;text-align:left;font-size:10px;color:var(--muted);
            letter-spacing:1.5px;text-transform:uppercase;background:var(--bg);
            border-bottom:1px solid var(--border);white-space:nowrap;}
+  thead th.th-mep{color:#a78bfa;}
   tbody tr{border-bottom:1px solid rgba(30,45,69,.5);transition:background .15s;}
   tbody tr:hover{background:rgba(0,212,255,.03);}
   tbody tr:last-child{border-bottom:none;}
@@ -73,6 +76,7 @@
   .tk{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);}
   .rc{color:var(--accent2);font-weight:600;} .rc.best{color:var(--green);font-size:15px;}
   .dc{color:var(--muted);} .pc{color:var(--warn);}
+  .mep-cell{color:#a78bfa;font-weight:600;}
   .sr{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px;margin-top:16px;display:none;}
   .sr.on{display:block;}
   .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;}
@@ -112,8 +116,9 @@
   <header>
     <div class="hrow">
       <div><h1>LECAPS</h1><div class="sub">Calculadora · Argentina</div></div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div class="badges">
         <span id="lu" style="font-size:11px;color:var(--muted)">–</span>
+        <div class="badge badge-mep">💵 MEP: <strong id="mepVal">–</strong></div>
         <div class="badge"><div class="dot"></div>EN VIVO</div>
       </div>
     </div>
@@ -127,14 +132,13 @@
     <div class="sc"><div class="sl">TEM Promedio</div><div class="sv" id="sm">–</div></div>
     <div class="sc"><div class="sl">TNA Promedio</div><div class="sv w" id="sn">–</div></div>
     <div class="sc"><div class="sl">Mejor TEA</div><div class="sv" id="sb2">–</div></div>
+    <div class="sc"><div class="sl">Dólar MEP</div><div class="sv" style="color:#a78bfa" id="sb3">–</div></div>
     <div class="sc"><div class="sl">Instrumentos</div><div class="sv a" id="sc">–</div></div>
   </div>
 
   <!-- SIMULADOR -->
   <div class="card">
     <div class="ptitle">💰 Simulador de Inversión</div>
-
-    <!-- Fila 1: monto e instrumento -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;" class="sim-grid">
       <div>
         <label class="lbl">Monto a invertir ($)</label>
@@ -145,8 +149,6 @@
         <select id="ss"><option value="">— Seleccionar —</option></select>
       </div>
     </div>
-
-    <!-- Fila 2: costos -->
     <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;" class="sim-grid">
       <div>
         <label class="lbl">Comisión del intermediario (%)</label>
@@ -156,15 +158,12 @@
       <div>
         <label class="lbl">Imp. Débito y Crédito (%)</label>
         <input type="number" id="idc" value="0.60" step="0.01" min="0" placeholder="0.60">
-        <div class="hint">Se cobra en compra y en amortización (se aplica 2 veces)</div>
+        <div class="hint">Se cobra en compra y en amortización (×2)</div>
       </div>
       <button class="btn bp" onclick="simular()">Calcular</button>
     </div>
 
-    <!-- RESULTADO -->
     <div class="sr" id="sres">
-
-      <!-- BRUTO -->
       <div class="sec-title sec-bruta">Resultado Bruto</div>
       <div class="sg" style="margin-bottom:0">
         <div><span class="si-lbl">Monto invertido</span><div class="si-val" id="i1">–</div></div>
@@ -174,10 +173,7 @@
         <div><span class="si-lbl">TEA bruta</span><div class="si-val" id="i5">–</div></div>
         <div><span class="si-lbl">TEM bruta</span><div class="si-val" id="i6">–</div></div>
       </div>
-
       <div class="divider"></div>
-
-      <!-- COSTOS -->
       <div class="sec-title sec-costos">Costos</div>
       <div class="sg" style="margin-bottom:0">
         <div><span class="si-lbl">Comisión intermediario</span><div class="si-val" style="color:var(--warn)" id="c1">–</div></div>
@@ -185,10 +181,7 @@
         <div><span class="si-lbl">Imp. D&C en amortización</span><div class="si-val" style="color:var(--warn)" id="c3">–</div></div>
         <div><span class="si-lbl">Total costos</span><div class="si-val" style="color:var(--red)" id="c4">–</div></div>
       </div>
-
       <div class="divider"></div>
-
-      <!-- NETO -->
       <div class="sec-title sec-neta">Resultado Neto</div>
       <div class="sg">
         <div><span class="si-lbl">Ganancia neta</span><div class="si-val" id="n1">–</div></div>
@@ -196,7 +189,6 @@
         <div><span class="si-lbl">TEM neta</span><div class="si-val" id="n3">–</div></div>
         <div><span class="si-lbl">Rendimiento neto total</span><div class="si-val" id="n4">–</div></div>
       </div>
-
     </div>
   </div>
 
@@ -215,6 +207,7 @@
           <th>Ticker</th><th>Vencimiento</th><th>Días</th><th>Meses</th>
           <th>Precio (Px)</th><th>Pago Final</th>
           <th>TNA</th><th>TEM</th><th>TEA</th>
+          <th class="th-mep">USD Breakeven</th>
         </tr></thead>
         <tbody id="tb"></tbody>
       </table>
@@ -228,7 +221,7 @@
   </div>
 
   <footer>
-    Calculadora LECAPS · Diseño Claude · <span id="yr"></span>
+    Calculadora LECAPS · <span id="yr"></span>
     <div style="max-width:780px;margin:14px auto 0;font-size:10px;color:var(--muted);line-height:1.8;opacity:0.7;">
       <strong style="color:var(--muted)">AVISO LEGAL:</strong> La información presentada en esta calculadora tiene carácter exclusivamente informativo y educativo.
       No constituye asesoramiento financiero, legal ni impositivo, ni debe interpretarse como una recomendación de compra o venta de ningún instrumento financiero.
@@ -243,12 +236,13 @@
 document.getElementById('yr').textContent = new Date().getFullYear();
 
 const API = 'https://lecaps-api-production.up.railway.app';
-let rows = [], graf = null;
+let rows = [], mepHoy = null, graf = null;
 
 function dias(v){ const h=new Date(); h.setHours(0,0,0,0); return Math.max(0,Math.round((new Date(v+'T00:00:00')-h)/86400000)); }
 function tasas(px,pf,d){ if(!px||!pf||d<=0) return {}; const r=pf/px,tea=(Math.pow(r,365/d)-1)*100,tem=(Math.pow(1+tea/100,1/12)-1)*100; return {tea,tem,tna:tem*12}; }
 function pct(n,d=2){ return n==null||isNaN(n)?'–':n.toFixed(d).replace('.',',')+' %'; }
 function ars(n){ return n!=null?'$ '+Math.round(n).toLocaleString('es-AR'):'–'; }
+function usd(n){ return n!=null?'$ '+n.toFixed(2):'–'; }
 
 function setS(msg,t){
   const el=document.getElementById('statusBar');
@@ -265,14 +259,24 @@ async function cargarPrecios(){
     const instrumentos = data.instrumentos || [];
     if(!instrumentos.length) throw new Error('No se recibieron instrumentos');
 
+    // Guardar MEP
+    mepHoy = data.mep || null;
+    if(mepHoy) {
+      document.getElementById('mepVal').textContent = '$ ' + mepHoy.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+      document.getElementById('sb3').textContent = '$ ' + mepHoy.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+
     rows = instrumentos.map(x => {
       const d = dias(x.vencimiento);
       const t = tasas(x.precio, x.pagoFinal, d);
-      return { ...x, d, mes: (d/30.4).toFixed(1), ...t };
+      // USD Breakeven = Pago Final / MEP hoy
+      // Es el tipo de cambio al vencimiento que iguala la inversión en pesos vs dólares
+      const breakeven = mepHoy ? (x.pagoFinal / x.precio) * mepHoy : null;
+      return { ...x, d, mes: (d/30.4).toFixed(1), ...t, breakeven };
     }).filter(x => x.d > 0).sort((a,b) => a.d - b.d);
 
     renderT(rows); renderS(rows); renderC(rows); renderSS(rows);
-    setS(`✅ ${rows.length} instrumentos actualizados`, 'ok');
+    setS(`✅ ${rows.length} instrumentos actualizados${mepHoy ? ' · MEP: $ '+mepHoy.toFixed(2) : ''}`, 'ok');
     document.getElementById('lu').textContent =
       'Act: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
   } catch(e) {
@@ -285,7 +289,7 @@ async function cargarPrecios(){
 
 function renderT(data){
   const tb=document.getElementById('tb');
-  if(!data.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:48px 0">Sin datos</td></tr>';return;}
+  if(!data.length){tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:48px 0">Sin datos</td></tr>';return;}
   const best=Math.max(...data.filter(r=>r.tea!=null).map(r=>r.tea));
   tb.innerHTML=data.map((r)=>`<tr>
     <td><span class="tk">${r.ticker}</span></td>
@@ -297,6 +301,7 @@ function renderT(data){
     <td class="rc">${pct(r.tna)}</td>
     <td class="rc">${pct(r.tem)}</td>
     <td class="rc ${r.tea===best&&r.tea!=null?'best':''}">${pct(r.tea)} ${r.tea===best&&r.tea!=null?'★':''}</td>
+    <td class="mep-cell">${r.breakeven ? '$ '+r.breakeven.toFixed(2) : '–'}</td>
   </tr>`).join('');
 }
 
@@ -346,56 +351,41 @@ function simular(){
   const tk    = document.getElementById('ss').value;
   const pcom  = parseFloat(document.getElementById('comision').value) / 100 || 0;
   const pidc  = parseFloat(document.getElementById('idc').value) / 100 || 0;
-
   if(!m || !tk) return;
   const r = rows.find(x => x.ticker === tk);
   if(!r?.precio) return;
 
-  // ── Cálculo bruto ────────────────────────────────────────────────────────
-  const lams    = Math.floor((m / r.precio) * 100) / 100;
-  const inv     = lams * r.precio;          // lo que realmente pagás por los títulos
-  const pagoBruto = lams * r.pagoFinal;     // lo que recibís al vencimiento (bruto)
+  const lams      = Math.floor((m / r.precio) * 100) / 100;
+  const inv       = lams * r.precio;
+  const pagoBruto = lams * r.pagoFinal;
   const ganBruta  = pagoBruto - inv;
 
-  // ── Costos ───────────────────────────────────────────────────────────────
-  // Comisión: % sobre el monto de compra
-  const costoComision = inv * pcom;
-
-  // Imp D&C: se cobra sobre el monto de compra Y sobre el pago de amortización
-  const idcCompra      = inv * pidc;
+  const costoComision   = inv * pcom;
+  const idcCompra       = inv * pidc;
   const idcAmortizacion = pagoBruto * pidc;
-  const totalCostos    = costoComision + idcCompra + idcAmortizacion;
+  const totalCostos     = costoComision + idcCompra + idcAmortizacion;
 
-  // ── Resultado neto ───────────────────────────────────────────────────────
-  // Costo efectivo de entrada = lo que pagás + todos los costos al comprar
-  const costoEntrada  = inv + costoComision + idcCompra;
-  // Cobro neto al vencimiento = pago bruto menos lo que te descuentan al amortizar
-  const cobroNeto     = pagoBruto - idcAmortizacion;
-  const ganNeta       = cobroNeto - costoEntrada;
-  const rendNeto      = ganNeta / costoEntrada * 100;
+  const costoEntrada = inv + costoComision + idcCompra;
+  const cobroNeto    = pagoBruto - idcAmortizacion;
+  const ganNeta      = cobroNeto - costoEntrada;
+  const rendNeto     = ganNeta / costoEntrada * 100;
+  const teaNeta      = (Math.pow(cobroNeto / costoEntrada, 365 / r.d) - 1) * 100;
+  const temNeta      = (Math.pow(1 + teaNeta / 100, 1 / 12) - 1) * 100;
 
-  // TEA y TEM netas
-  const teaNeta = (Math.pow(cobroNeto / costoEntrada, 365 / r.d) - 1) * 100;
-  const temNeta = (Math.pow(1 + teaNeta / 100, 1 / 12) - 1) * 100;
-
-  // ── Render ───────────────────────────────────────────────────────────────
   document.getElementById('i1').textContent = ars(inv);
   document.getElementById('i2').textContent = ars(pagoBruto);
   document.getElementById('i3').textContent = ars(ganBruta);
   document.getElementById('i4').textContent = r.d + ' días';
   document.getElementById('i5').textContent = pct(r.tea);
   document.getElementById('i6').textContent = pct(r.tem);
-
   document.getElementById('c1').textContent = ars(costoComision);
   document.getElementById('c2').textContent = ars(idcCompra);
   document.getElementById('c3').textContent = ars(idcAmortizacion);
   document.getElementById('c4').textContent = ars(totalCostos);
-
   document.getElementById('n1').textContent = ars(ganNeta);
   document.getElementById('n2').textContent = pct(teaNeta);
   document.getElementById('n3').textContent = pct(temNeta);
   document.getElementById('n4').textContent = pct(rendNeto);
-
   document.getElementById('sres').classList.add('on');
 }
 
