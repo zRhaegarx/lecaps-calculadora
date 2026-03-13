@@ -273,6 +273,33 @@ const COLS = [
 let visibleCols = {};
 COLS.forEach(c => { visibleCols[c.id] = c.always || c.default; });
 
+// Ordenamiento
+let sortCol = 'dias', sortAsc = true;
+const SORT_KEY = {
+  ticker: r => r.ticker,
+  venc:   r => r.vencimiento,
+  dias:   r => r.d,
+  meses:  r => parseFloat(r.mes),
+  precio: r => r.precio || 0,
+  var:    r => r.varPct || 0,
+  pagofinal: r => r.pagoFinal || 0,
+  tna:    r => r.tna || 0,
+  tem:    r => r.tem || 0,
+  tea:    r => r.tea || 0,
+  breakeven: r => r.breakeven || 0,
+};
+
+function sortedRows(data){
+  const fn = SORT_KEY[sortCol];
+  if(!fn) return data;
+  return [...data].sort((a,b) => {
+    const va = fn(a), vb = fn(b);
+    if(va < vb) return sortAsc ? -1 : 1;
+    if(va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+}
+
 function initColFilter(){
   const cont = document.getElementById('colChecks');
   COLS.filter(c => !c.always).forEach(c => {
@@ -340,20 +367,24 @@ async function cargarPrecios(){
 }
 
 function renderT(data){
-  // Header
+  // Header con ordenamiento
   const thead = document.getElementById('thead');
-  thead.innerHTML = COLS.filter(c => visibleCols[c.id]).map(c =>
-    `<th${c.id==='breakeven'?' class="th-mep"':''}>${c.label}</th>`
-  ).join('');
+  thead.innerHTML = COLS.filter(c => visibleCols[c.id]).map(c => {
+    const isSort = sortCol === c.id;
+    const arrow = isSort ? (sortAsc ? ' ↑' : ' ↓') : '';
+    const cls = [c.id==='breakeven'?'th-mep':'', 'th-sortable'].filter(Boolean).join(' ');
+    return `<th class="${cls}" onclick="setSort('${c.id}')" style="cursor:pointer;user-select:none;">${c.label}<span style="color:var(--accent);font-size:10px">${arrow}</span></th>`;
+  }).join('');
 
+  const sorted = sortedRows(data);
   const tb = document.getElementById('tb');
-  if(!data.length){
+  if(!sorted.length){
     tb.innerHTML=`<tr><td colspan="${COLS.filter(c=>visibleCols[c.id]).length}" style="text-align:center;color:var(--muted);padding:48px 0">Sin datos</td></tr>`;
     return;
   }
-  const best = Math.max(...data.filter(r=>r.tea!=null).map(r=>r.tea));
+  const best = Math.max(...sorted.filter(r=>r.tea!=null).map(r=>r.tea));
 
-  tb.innerHTML = data.map(r => {
+  tb.innerHTML = sorted.map(r => {
     const cells = [];
     if(visibleCols.ticker)    cells.push(`<td><span class="tk">${r.ticker}</span></td>`);
     if(visibleCols.venc)      cells.push(`<td>${r.vencimiento}</td>`);
@@ -455,6 +486,12 @@ function simular(){
   document.getElementById('n3').textContent = pct(temNeta);
   document.getElementById('n4').textContent = pct(rendNeto);
   document.getElementById('sres').classList.add('on');
+}
+
+function setSort(col){
+  if(sortCol === col) sortAsc = !sortAsc;
+  else { sortCol = col; sortAsc = true; }
+  renderT(rows);
 }
 
 initColFilter();
