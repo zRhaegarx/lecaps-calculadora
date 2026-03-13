@@ -143,7 +143,7 @@
       <div class="badges">
         <span id="lu" style="font-size:11px;color:var(--muted)">–</span>
         <div class="badge badge-mep">💵 MEP: <strong id="mepVal">–</strong></div>
-        <div class="badge"><div class="dot"></div>EN VIVO</div>
+        <div class="badge" id="mercadoBadge"><div class="dot" id="mercadoDot"></div><span id="mercadoTxt">–</span></div>
       </div>
     </div>
   </header>
@@ -656,6 +656,61 @@ function comparar(){
   document.getElementById('cmp-res').style.display = 'block';
 }
 
+
+// ── Mercado abierto/cerrado ──────────────────────────────────────────────
+const FERIADOS_2026 = new Set([
+  '2026-01-01','2026-02-16','2026-02-17', // Año Nuevo, Carnaval
+  '2026-03-24',                            // Día de la Memoria
+  '2026-04-02',                            // Malvinas
+  '2026-04-03','2026-04-04',               // Semana Santa (Viernes y Jueves Santo)
+  '2026-05-01',                            // Día del Trabajador
+  '2026-05-25',                            // Revolución de Mayo
+  '2026-06-15',                            // Paso a la Inmortalidad Güemes
+  '2026-06-20',                            // Paso a la Inmortalidad Belgrano
+  '2026-07-09',                            // Independencia
+  '2026-08-17',                            // Paso a la Inmortalidad San Martín
+  '2026-10-12',                            // Día del Respeto a la Diversidad
+  '2026-11-23',                            // Día de la Soberanía Nacional
+  '2026-12-08',                            // Inmaculada Concepción
+  '2026-12-25',                            // Navidad
+]);
+
+function esMercadoAbierto() {
+  // Hora argentina = UTC-3
+  const now = new Date();
+  const ar = new Date(now.toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+  const dow = ar.getDay(); // 0=dom, 6=sab
+  if(dow === 0 || dow === 6) return false;
+  const fecha = ar.toISOString().slice(0,10);
+  if(FERIADOS_2026.has(fecha)) return false;
+  const h = ar.getHours(), m = ar.getMinutes();
+  const mins = h * 60 + m;
+  return mins >= 630 && mins < 1020; // 10:30 = 630, 17:00 = 1020
+}
+
+function actualizarBadgeMercado() {
+  const abierto = esMercadoAbierto();
+  const badge = document.getElementById('mercadoBadge');
+  const dot   = document.getElementById('mercadoDot');
+  const txt   = document.getElementById('mercadoTxt');
+  if(abierto) {
+    badge.style.background = 'rgba(0,255,157,.08)';
+    badge.style.borderColor = 'rgba(0,255,157,.2)';
+    badge.style.color = 'var(--accent2)';
+    dot.style.background = 'var(--accent2)';
+    dot.style.display = 'block';
+    txt.textContent = 'Mercado Abierto';
+  } else {
+    badge.style.background = 'rgba(100,116,139,.08)';
+    badge.style.borderColor = 'rgba(100,116,139,.2)';
+    badge.style.color = 'var(--muted)';
+    dot.style.display = 'none';
+    txt.textContent = 'Mercado Cerrado';
+  }
+}
+
+actualizarBadgeMercado();
+setInterval(actualizarBadgeMercado, 60 * 1000); // revisar cada minuto
 
 function toggleAcordeon(id){
   const body  = document.getElementById('body-' + id);
