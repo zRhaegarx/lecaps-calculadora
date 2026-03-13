@@ -118,6 +118,14 @@
   .col-check input{display:none;}
 
   @media(max-width:700px){.sim-grid{grid-template-columns:1fr!important;}}
+
+  /* Acordeón */
+  .accordion-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+  .accordion-header:hover .ptitle{color:var(--accent2);}
+  .accordion-arrow{font-size:14px;color:var(--muted);transition:transform .25s;}
+  .accordion-arrow.open{transform:rotate(180deg);}
+  .accordion-body{overflow:hidden;max-height:0;transition:max-height .35s ease,opacity .25s ease;opacity:0;}
+  .accordion-body.open{max-height:2000px;opacity:1;}
 </style>
 </head>
 <body>
@@ -154,7 +162,12 @@
 
   <!-- SIMULADOR -->
   <div class="card">
-    <div class="ptitle">💰 Simulador de Inversión</div>
+    <div class="accordion-header" onclick="toggleAcordeon('sim')">
+      <div class="ptitle" style="margin:0">💰 Simulador de Inversión</div>
+      <span class="accordion-arrow" id="arrow-sim">▼</span>
+    </div>
+    <div class="accordion-body" id="body-sim">
+      <div style="height:16px;"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;" class="sim-grid">
       <div>
         <label class="lbl">Monto a invertir ($)</label>
@@ -205,13 +218,19 @@
         <div><span class="si-lbl">Rendimiento neto total</span><div class="si-val" id="n4">–</div></div>
       </div>
     </div>
+    </div><!-- fin accordion-body sim -->
   </div>
 
 
   <!-- COMPARADOR -->
   <div class="card">
-    <div class="ptitle">⚖️ Comparador de Instrumentos</div>
-    <div style="margin-bottom:16px;">
+    <div class="accordion-header" onclick="toggleAcordeon('cmp')">
+      <div class="ptitle" style="margin:0">⚖️ Comparador de Instrumentos</div>
+      <span class="accordion-arrow" id="arrow-cmp">▼</span>
+    </div>
+    <div class="accordion-body" id="body-cmp">
+      <div style="height:16px;"></div>
+      <div style="margin-bottom:16px;">
       <label class="lbl">Monto a invertir ($)</label>
       <input type="number" id="cmp-monto" value="1000000" placeholder="1000000" style="max-width:260px;">
     </div>
@@ -257,6 +276,7 @@
         <div id="cmp-ganador" style="margin-top:14px;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;"></div>
       </div>
     </div>
+    </div><!-- fin accordion-body cmp -->
   </div>
 
   <!-- TABLA -->
@@ -636,6 +656,14 @@ function comparar(){
   document.getElementById('cmp-res').style.display = 'block';
 }
 
+
+function toggleAcordeon(id){
+  const body  = document.getElementById('body-' + id);
+  const arrow = document.getElementById('arrow-' + id);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  arrow.classList.toggle('open', !isOpen);
+}
 
 function setSort(col){
   if(sortCol === col) sortAsc = !sortAsc;
