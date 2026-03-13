@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Calculadora LECAPS · En Vivo</title>
+<title>Renta Fija · Argentina</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -26,6 +26,17 @@
              padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;
              font-family:'JetBrains Mono',monospace;letter-spacing:1px;transition:all .2s;}
   .share-btn:hover{background:rgba(0,212,255,.15);}
+  .tabs{display:flex;gap:0;margin-bottom:28px;border-bottom:2px solid var(--border);}
+  .tab{padding:10px 28px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+       letter-spacing:1px;cursor:pointer;border:none;background:transparent;
+       color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;
+       transition:all .2s;text-transform:uppercase;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-cer.active{color:#a78bfa;border-bottom-color:#a78bfa;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
   *{margin:0;padding:0;box-sizing:border-box;}
   body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh;}
   body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;
@@ -157,7 +168,7 @@
 <div class="wrap" id="mainContent" style="display:none">
   <header>
     <div class="hrow">
-      <div><h1>LECAPS</h1><div class="sub">Calculadora · Argentina</div></div>
+      <div><h1 id="mainTitle">RENTA FIJA</h1><div class="sub" id="mainSub">Argentina</div></div>
       <div class="badges">
         <span id="lu" style="font-size:11px;color:var(--muted)">–</span>
         <button class="theme-btn" onclick="toggleTema()" id="temaBtn">☀️ Modo claro</button>
@@ -169,6 +180,15 @@
   </header>
 
   <div id="statusBar" class="hidden"></div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('lecaps')">📊 Tasa Fija</button>
+    <button class="tab tab-cer" onclick="switchTab('cer')">📈 CER</button>
+  </div>
+
+  <!-- PANEL LECAPS -->
+  <div class="tab-panel active" id="panel-lecaps">
 
   <!-- STATS -->
   <div class="ga">
@@ -378,8 +398,51 @@
     </div>
   </div>
 
+
+  </div><!-- fin panel-lecaps -->
+
+  <!-- PANEL CER -->
+  <div class="tab-panel" id="panel-cer">
+    <!-- STATS CER -->
+    <div class="ga" id="cer-stats-grid">
+      <div class="sc"><div class="sl">Tasa Real Prom.</div><div class="sv a" id="cer-st">–</div></div>
+      <div class="sc"><div class="sl">Mejor Tasa Real</div><div class="sv" id="cer-sb">–</div></div>
+      <div class="sc"><div class="sl">Dólar MEP</div><div class="sv" style="color:#a78bfa" id="cer-mep">–</div></div>
+      <div class="sc"><div class="sl">Instrumentos</div><div class="sv a" id="cer-sc">–</div></div>
+    </div>
+
+    <!-- MONITOR ANOMALIAS CER -->
+    <div id="cer-anomalias-wrap" style="margin-bottom:16px;display:none;">
+      <div style="font-size:10px;color:var(--warn);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">⚠️ Monitor de Anomalías</div>
+      <div id="cer-anomalias-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <!-- TABLA CER -->
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:22px;">
+      <div class="th">
+        <div class="ptitle" style="margin:0">📊 Instrumentos CER · LECER & BONCER</div>
+        <div class="brow">
+          <span id="cer-spl" class="hidden"><span class="spin"></span> Actualizando...</span>
+          <button class="btn bs" style="padding:7px 14px;font-size:11px;" onclick="cargarCER()" id="cer-br">↻ Actualizar</button>
+        </div>
+      </div>
+      <div class="ts">
+        <table>
+          <thead><tr id="cer-thead"></tr></thead>
+          <tbody id="cer-tb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CURVA CER -->
+    <div class="card">
+      <div class="ptitle" style="margin-bottom:18px">📈 Curva de Tasa Real</div>
+      <div class="cc"><canvas id="cer-ch"></canvas></div>
+    </div>
+  </div><!-- fin panel-cer -->
+
   <footer>
-    Calculadora LECAPS · <span id="yr"></span>
+    Calculadora RENTA FIJA · <span id="yr"></span>
     <div style="max-width:780px;margin:14px auto 0;font-size:10px;color:var(--muted);line-height:1.8;opacity:0.7;">
       <strong style="color:var(--muted)">AVISO LEGAL:</strong> La información presentada en esta calculadora tiene carácter exclusivamente informativo y educativo.
       No constituye asesoramiento financiero, legal ni impositivo, ni debe interpretarse como una recomendación de compra o venta de ningún instrumento financiero.
@@ -921,8 +984,206 @@ initColFilter();
   }
 })();
 
+
+// ── CER ─────────────────────────────────────────────────────────────────
+let rowsCer = [], grafCer = null;
+
+const COLS_CER = [
+  { id:'ticker',    label:'Ticker',       always: true },
+  { id:'tipo',      label:'Tipo',         default: true },
+  { id:'venc',      label:'Vencimiento',  default: true },
+  { id:'dias',      label:'Días',         default: true },
+  { id:'precio',    label:'Precio',       default: true },
+  { id:'var',       label:'Var. Diaria',  default: true },
+  { id:'treal',     label:'Tasa Real',    default: true },
+  { id:'breakeven', label:'USD Breakeven',default: true },
+];
+
+function tasaReal(px, d){
+  if(!px || d <= 0) return null;
+  return (Math.pow(100 / px, 365 / d) - 1) * 100;
+}
+
+async function cargarCER(){
+  document.getElementById('cer-spl').classList.remove('hidden');
+  document.getElementById('cer-br').disabled = true;
+  try {
+    const resp = await fetch(API + '/cer');
+    if(!resp.ok) throw new Error('Error del servidor');
+    const data = await resp.json();
+    const instrumentos = data.instrumentos || [];
+    if(!instrumentos.length) throw new Error('No se recibieron instrumentos CER');
+
+    const cerMep = data.mep || mepHoy;
+    if(cerMep){
+      document.getElementById('cer-mep').textContent = '$ ' + cerMep.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    }
+
+    rowsCer = instrumentos.map(x => {
+      const d = dias(x.vencimiento);
+      const tr = tasaReal(x.precio, d);
+      const breakeven = cerMep ? (100 / x.precio) * cerMep : null;
+      let varPct = null;
+      if(x.cierreAnterior && x.precio && x.cierreAnterior !== x.precio){
+        varPct = (x.precio - x.cierreAnterior) / x.cierreAnterior * 100;
+      }
+      return { ...x, d, treal: tr, breakeven, varPct };
+    }).filter(x => x.d > 0).sort((a,b) => a.d - b.d);
+
+    renderCerT(rowsCer);
+    renderCerS(rowsCer);
+    renderCerC(rowsCer);
+    renderCerAnomalias(rowsCer);
+
+  } catch(e) {
+    setS('❌ Error CER: ' + e.message, 'er');
+  } finally {
+    document.getElementById('cer-spl').classList.add('hidden');
+    document.getElementById('cer-br').disabled = false;
+  }
+}
+
+let sortColCer = 'dias', sortAscCer = true;
+
+function setSortCer(col){
+  if(sortColCer === col) sortAscCer = !sortAscCer;
+  else { sortColCer = col; sortAscCer = true; }
+  renderCerT(rowsCer);
+}
+
+function sortedRowsCer(data){
+  const keys = { ticker: r=>r.ticker, tipo: r=>r.tipo||'', venc: r=>r.vencimiento,
+    dias: r=>r.d, precio: r=>r.precio||0, var: r=>r.varPct||0,
+    treal: r=>r.treal||0, breakeven: r=>r.breakeven||0 };
+  const fn = keys[sortColCer];
+  if(!fn) return data;
+  return [...data].sort((a,b) => {
+    const va=fn(a),vb=fn(b);
+    if(va<vb) return sortAscCer?-1:1;
+    if(va>vb) return sortAscCer?1:-1;
+    return 0;
+  });
+}
+
+function renderCerT(data){
+  const thead = document.getElementById('cer-thead');
+  thead.innerHTML = COLS_CER.map(c => {
+    const isSort = sortColCer === c.id;
+    const arrow = isSort ? (sortAscCer ? ' ↑' : ' ↓') : '';
+    const cls = c.id==='breakeven' ? 'th-mep th-sortable' : 'th-sortable';
+    return `<th class="${cls}" onclick="setSortCer('${c.id}')" style="cursor:pointer;user-select:none;">${c.label}<span style="color:var(--accent);font-size:10px">${arrow}</span></th>`;
+  }).join('');
+
+  const sorted = sortedRowsCer(data);
+  const tb = document.getElementById('cer-tb');
+  if(!sorted.length){
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:48px 0">Sin datos</td></tr>';
+    return;
+  }
+  const best = Math.max(...sorted.filter(r=>r.treal!=null).map(r=>r.treal));
+
+  tb.innerHTML = sorted.map(r => {
+    const tipoBadge = r.tipo === 'BONCER'
+      ? `<span style="background:rgba(167,139,250,.15);color:#a78bfa;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700">BONCER</span>`
+      : `<span style="background:rgba(0,212,255,.12);color:var(--accent);padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700">LECER</span>`;
+    const varCell = r.varPct==null ? '<td class="var-neu">–</td>'
+      : r.varPct>0 ? `<td class="var-up">▲ ${r.varPct.toFixed(2).replace('.',',')}%</td>`
+      : r.varPct<0 ? `<td class="var-dn">▼ ${Math.abs(r.varPct).toFixed(2).replace('.',',')}%</td>`
+      : '<td class="var-neu">= 0,00%</td>';
+    return `<tr>
+      <td><span class="tk">${r.ticker}</span></td>
+      <td>${tipoBadge}</td>
+      <td>${fmtFecha(r.vencimiento)}</td>
+      <td class="dc">${r.d}</td>
+      <td class="pc">${r.precio ? r.precio.toFixed(3) : '–'}</td>
+      ${varCell}
+      <td class="rc ${r.treal===best&&r.treal!=null?'best':''}">${pct(r.treal)} ${r.treal===best&&r.treal!=null?'★':''}</td>
+      <td class="mep-cell">${r.breakeven ? '$ '+r.breakeven.toFixed(2) : '–'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderCerS(data){
+  const v = data.filter(r=>r.treal!=null);
+  if(!v.length) return;
+  const avg = v.reduce((s,r)=>s+r.treal,0)/v.length;
+  document.getElementById('cer-st').textContent = pct(avg);
+  document.getElementById('cer-sb').textContent = pct(Math.max(...v.map(r=>r.treal)));
+  document.getElementById('cer-sc').textContent = v.length;
+}
+
+function renderCerC(data){
+  const v = data.filter(r=>r.treal!=null).sort((a,b)=>a.d-b.d);
+  const ctx = document.getElementById('cer-ch').getContext('2d');
+  if(grafCer) grafCer.destroy();
+  grafCer = new Chart(ctx,{type:'line',data:{
+    labels: v.map(r=>r.ticker),
+    datasets:[{
+      label:'Tasa Real %',
+      data: v.map(r=>+r.treal.toFixed(2)),
+      borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.07)',
+      fill:true,tension:.35,pointRadius:5,pointHoverRadius:8,
+      pointBackgroundColor:'#a78bfa',borderWidth:2
+    }]
+  },options:{
+    responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{labels:{color:'#94a3b8',font:{family:'JetBrains Mono',size:11}}},
+      tooltip:{backgroundColor:'#1a2235',borderColor:'#1e2d45',borderWidth:1,
+               titleColor:'#e2e8f0',bodyColor:'#94a3b8',
+               titleFont:{family:'Syne',size:13},bodyFont:{family:'JetBrains Mono',size:12},
+               callbacks:{label:c=>` Tasa Real: ${c.parsed.y.toFixed(2)}%`}}
+    },
+    scales:{
+      x:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:10},maxRotation:45},grid:{color:'rgba(30,45,69,.5)'}},
+      y:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:11},callback:v=>v+'%'},grid:{color:'rgba(30,45,69,.5)'}}
+    }
+  }});
+}
+
+function renderCerAnomalias(data){
+  const v = data.filter(r=>r.treal!=null);
+  if(v.length < 3) return;
+  const avg = v.reduce((s,r)=>s+r.treal,0)/v.length;
+  const std = Math.sqrt(v.reduce((s,r)=>s+Math.pow(r.treal-avg,2),0)/v.length);
+  const anomalas = v.filter(r=>Math.abs(r.treal-avg)>std);
+  const wrap = document.getElementById('cer-anomalias-wrap');
+  const lista = document.getElementById('cer-anomalias-lista');
+  if(!anomalas.length){ wrap.style.display='none'; return; }
+  lista.innerHTML = anomalas.map(r=>{
+    const diff = r.treal - avg;
+    const esAlta = diff > 0;
+    const cls = esAlta ? 'anomalia-alta' : 'anomalia-baja';
+    const icono = esAlta ? '📈' : '📉';
+    const texto = esAlta
+      ? `tasa real <strong>${pct(r.treal)}</strong> — <strong>+${pct(Math.abs(diff))}</strong> sobre el promedio (${pct(avg)}). Posible oportunidad.`
+      : `tasa real <strong>${pct(r.treal)}</strong> — <strong>${pct(Math.abs(diff))}</strong> bajo el promedio (${pct(avg)}). Rendimiento bajo vs la curva.`;
+    return `<div class="${cls}">${icono} <span class="anomalia-ticker">${r.ticker}</span> · ${r.tipo} · Vence ${fmtFecha(r.vencimiento)} · ${texto}</div>`;
+  }).join('');
+  wrap.style.display = 'block';
+}
+
+let tabActual = 'lecaps';
+function switchTab(tab){
+  tabActual = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+
+  if(tab === 'lecaps'){
+    document.getElementById('mainTitle').textContent = 'RENTA FIJA';
+    document.getElementById('mainSub').textContent = 'Argentina';
+  } else {
+    document.getElementById('mainTitle').textContent = 'CER';
+    document.getElementById('mainSub').textContent = 'Argentina';
+    if(!rowsCer.length) cargarCER();
+  }
+}
+
+
 setInterval(cargarPrecios, 5 * 60 * 1000);
+setInterval(() => { if(tabActual === "cer") cargarCER(); }, 5 * 60 * 1000);
 </script>
 </body>
 </html>
-
