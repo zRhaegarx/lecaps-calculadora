@@ -131,6 +131,10 @@
   .col-check.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.06);}
   .col-check input{display:none;}
 
+  .anomalia-alta{background:rgba(0,255,157,.07);border:1px solid rgba(0,255,157,.25);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--accent2);}
+  .anomalia-baja{background:rgba(255,71,87,.07);border:1px solid rgba(255,71,87,.25);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--red);}
+  .anomalia-ticker{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-right:8px;}
+
   @media(max-width:700px){.sim-grid{grid-template-columns:1fr!important;}}
 
   /* Acordeón */
@@ -174,6 +178,12 @@
     <div class="sc"><div class="sl">Mejor TEA</div><div class="sv" id="sb2">–</div></div>
     <div class="sc"><div class="sl">Dólar MEP</div><div class="sv" style="color:#a78bfa" id="sb3">–</div></div>
     <div class="sc"><div class="sl">Instrumentos</div><div class="sv a" id="sc">–</div></div>
+  </div>
+
+  <!-- MONITOR ANOMALIAS -->
+  <div id="anomalias-wrap" style="margin-bottom:16px;display:none;">
+    <div style="font-size:10px;color:var(--warn);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">⚠️ Monitor de Anomalías</div>
+    <div id="anomalias-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
   </div>
 
   <!-- TABLA -->
@@ -446,6 +456,7 @@ function initColFilter(){
   });
 }
 
+function fmtFecha(v){ const [y,m,d]=v.split("-"); return d+"/"+m+"/"+y; }
 function dias(v){ const h=new Date(); h.setHours(0,0,0,0); return Math.max(0,Math.round((new Date(v+'T00:00:00')-h)/86400000)); }
 function tasas(px,pf,d){ if(!px||!pf||d<=0) return {}; const r=pf/px,tea=(Math.pow(r,365/d)-1)*100,tem=(Math.pow(1+tea/100,1/12)-1)*100; return {tea,tem,tna:tem*12}; }
 function pct(n,d=2){ return n==null||isNaN(n)?'–':n.toFixed(d).replace('.',',')+' %'; }
@@ -485,7 +496,7 @@ async function cargarPrecios(){
       return { ...x, d, mes: (d/30.4).toFixed(1), ...t, breakeven, varPct, varAbs };
     }).filter(x => x.d > 0).sort((a,b) => a.d - b.d);
 
-    renderT(rows); renderS(rows); renderC(rows); renderSS(rows);
+    renderT(rows); renderS(rows); renderC(rows); renderSS(rows); renderAnomalias(rows);
     setS(`✅ ${rows.length} instrumentos actualizados${mepHoy ? ' · MEP: $ '+mepHoy.toFixed(2) : ''}`, 'ok');
     document.getElementById('lu').textContent =
       'Act: '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
@@ -518,7 +529,7 @@ function renderT(data){
   tb.innerHTML = sorted.map(r => {
     const cells = [];
     if(visibleCols.ticker)    cells.push(`<td><span class="tk">${r.ticker}</span></td>`);
-    if(visibleCols.venc)      cells.push(`<td>${r.vencimiento}</td>`);
+    if(visibleCols.venc)      cells.push(`<td>${fmtFecha(r.vencimiento)}</td>`);
     if(visibleCols.dias)      cells.push(`<td class="dc">${r.d}</td>`);
     if(visibleCols.meses)     cells.push(`<td class="dc">${r.mes}</td>`);
     if(visibleCols.precio)    cells.push(`<td class="pc">${r.precio ? r.precio.toFixed(3) : '–'}</td>`);
@@ -574,7 +585,7 @@ function renderC(data){
 
 function renderSS(data){
   const opts = '<option value="">— Seleccionar —</option>'+
-    data.filter(r=>r.tea!=null).map(r=>`<option value="${r.ticker}">${r.ticker} · ${r.vencimiento} · TEA ${pct(r.tea)}</option>`).join('');
+    data.filter(r=>r.tea!=null).map(r=>`<option value="${r.ticker}">${r.ticker} · ${fmtFecha(r.vencimiento)} · TEA ${pct(r.tea)}</option>`).join('');
   document.getElementById('ss').innerHTML = opts;
   document.getElementById('cmp-a-inst').innerHTML = opts;
   document.getElementById('cmp-b-inst').innerHTML = opts;
@@ -671,7 +682,7 @@ function comparar(){
   };
 
   const filas = [
-    { label: 'Vencimiento',        vA: rA.vencimiento,      vB: rB.vencimiento,      fmt: v=>v,          cmp: false },
+    { label: 'Vencimiento',        vA: rA.vencimiento,      vB: rB.vencimiento,      fmt: v=>fmtFecha(v), cmp: false },
     { label: 'Días',               vA: rA.d,                vB: rB.d,                fmt: v=>v+' días',  cmp: false },
     { label: 'Precio (Px)',        vA: rA.precio,           vB: rB.precio,           fmt: v=>v.toFixed(3), cmp: false },
     { label: 'Pago al vencimiento',vA: nA.pagoBruto,        vB: nB.pagoBruto,        fmt: ars,           mayor: true },
@@ -776,6 +787,38 @@ function actualizarBadgeMercado() {
 
 actualizarBadgeMercado();
 setInterval(actualizarBadgeMercado, 60 * 1000); // revisar cada minuto
+
+function renderAnomalias(data){
+  const v = data.filter(r => r.tea != null);
+  if(v.length < 3) return;
+
+  // Calcular promedio y desvío estándar
+  const avg = v.reduce((s,r) => s + r.tea, 0) / v.length;
+  const std = Math.sqrt(v.reduce((s,r) => s + Math.pow(r.tea - avg, 2), 0) / v.length);
+
+  const anomalas = v.filter(r => Math.abs(r.tea - avg) > std);
+
+  const wrap = document.getElementById('anomalias-wrap');
+  const lista = document.getElementById('anomalias-lista');
+
+  if(!anomalas.length){
+    wrap.style.display = 'none';
+    return;
+  }
+
+  lista.innerHTML = anomalas.map(r => {
+    const diff = r.tea - avg;
+    const esAlta = diff > 0;
+    const cls = esAlta ? 'anomalia-alta' : 'anomalia-baja';
+    const icono = esAlta ? '📈' : '📉';
+    const texto = esAlta
+      ? `rinde <strong>${pct(r.tea)}</strong> — <strong>+${pct(Math.abs(diff))}</strong> por encima del promedio (${pct(avg)}). Posible oportunidad.`
+      : `rinde <strong>${pct(r.tea)}</strong> — <strong>${pct(Math.abs(diff))}</strong> por debajo del promedio (${pct(avg)}). Rendimiento bajo vs la curva.`;
+    return `<div class="${cls}">${icono} <span class="anomalia-ticker">${r.ticker}</span> · Vence ${fmtFecha(r.vencimiento)} · ${texto}</div>`;
+  }).join('');
+
+  wrap.style.display = 'block';
+}
 
 function calcularInversa(){
   const ganDeseada = parseFloat(document.getElementById('inv-ganancia').value);
@@ -882,3 +925,4 @@ setInterval(cargarPrecios, 5 * 60 * 1000);
 </script>
 </body>
 </html>
+
