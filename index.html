@@ -405,8 +405,8 @@
   <div class="tab-panel" id="panel-cer">
     <!-- STATS CER -->
     <div class="ga" id="cer-stats-grid">
-      <div class="sc"><div class="sl">Tasa Real Prom.</div><div class="sv a" id="cer-st">–</div></div>
-      <div class="sc"><div class="sl">Mejor Tasa Real</div><div class="sv" id="cer-sb">–</div></div>
+      <div class="sc"><div class="sl">TIR Promedio</div><div class="sv a" id="cer-st">–</div></div>
+      <div class="sc"><div class="sl">Mejor TIR</div><div class="sv" id="cer-sb">–</div></div>
       <div class="sc"><div class="sl">Dólar MEP</div><div class="sv" style="color:#a78bfa" id="cer-mep">–</div></div>
       <div class="sc"><div class="sl">Instrumentos</div><div class="sv a" id="cer-sc">–</div></div>
     </div>
@@ -420,7 +420,7 @@
     <!-- TABLA CER -->
     <div class="card" style="padding:0;overflow:hidden;margin-bottom:22px;">
       <div class="th">
-        <div class="ptitle" style="margin:0">📊 Instrumentos CER · LECER & BONCER</div>
+        <div class="ptitle" style="margin:0">📊 Instrumentos CER · LECER & BONCER — TIR Nominal</div>
         <div class="brow">
           <span id="cer-spl" class="hidden"><span class="spin"></span> Actualizando...</span>
           <button class="btn bs" style="padding:7px 14px;font-size:11px;" onclick="cargarCER()" id="cer-br">↻ Actualizar</button>
@@ -436,7 +436,7 @@
 
     <!-- CURVA CER -->
     <div class="card">
-      <div class="ptitle" style="margin-bottom:18px">📈 Curva de Tasa Real</div>
+      <div class="ptitle" style="margin-bottom:18px">📈 Curva de TIR Nominal</div>
       <div class="cc"><canvas id="cer-ch"></canvas></div>
     </div>
   </div><!-- fin panel-cer -->
@@ -995,7 +995,7 @@ const COLS_CER = [
   { id:'dias',      label:'Días',         default: true },
   { id:'precio',    label:'Precio',       default: true },
   { id:'var',       label:'Var. Diaria',  default: true },
-  { id:'treal',     label:'Tasa Real',    default: true },
+  { id:'treal',     label:'TIR',          default: true },
   { id:'breakeven', label:'USD Breakeven',default: true },
 ];
 
@@ -1022,7 +1022,7 @@ async function cargarCER(){
     rowsCer = instrumentos.map(x => {
       const d = dias(x.vencimiento);
       const tr = tasaReal(x.precio, d);
-      const breakeven = cerMep ? (100 / x.precio) * cerMep : null;
+      const breakeven = cerMep ? (100 * cerMep / x.precio) : null;
       let varPct = null;
       if(x.cierreAnterior && x.precio && x.cierreAnterior !== x.precio){
         varPct = (x.precio - x.cierreAnterior) / x.cierreAnterior * 100;
@@ -1119,7 +1119,7 @@ function renderCerC(data){
   grafCer = new Chart(ctx,{type:'line',data:{
     labels: v.map(r=>r.ticker),
     datasets:[{
-      label:'Tasa Real %',
+      label:'TIR %',
       data: v.map(r=>+r.treal.toFixed(2)),
       borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.07)',
       fill:true,tension:.35,pointRadius:5,pointHoverRadius:8,
@@ -1132,7 +1132,7 @@ function renderCerC(data){
       tooltip:{backgroundColor:'#1a2235',borderColor:'#1e2d45',borderWidth:1,
                titleColor:'#e2e8f0',bodyColor:'#94a3b8',
                titleFont:{family:'Syne',size:13},bodyFont:{family:'JetBrains Mono',size:12},
-               callbacks:{label:c=>` Tasa Real: ${c.parsed.y.toFixed(2)}%`}}
+               callbacks:{label:c=>` TIR: ${c.parsed.y.toFixed(2)}%`}}
     },
     scales:{
       x:{ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:10},maxRotation:45},grid:{color:'rgba(30,45,69,.5)'}},
@@ -1156,8 +1156,8 @@ function renderCerAnomalias(data){
     const cls = esAlta ? 'anomalia-alta' : 'anomalia-baja';
     const icono = esAlta ? '📈' : '📉';
     const texto = esAlta
-      ? `tasa real <strong>${pct(r.treal)}</strong> — <strong>+${pct(Math.abs(diff))}</strong> sobre el promedio (${pct(avg)}). Posible oportunidad.`
-      : `tasa real <strong>${pct(r.treal)}</strong> — <strong>${pct(Math.abs(diff))}</strong> bajo el promedio (${pct(avg)}). Rendimiento bajo vs la curva.`;
+      ? `TIR <strong>${pct(r.treal)}</strong> — <strong>+${pct(Math.abs(diff))}</strong> sobre el promedio (${pct(avg)}). Posible oportunidad.`
+      : `TIR <strong>${pct(r.treal)}</strong> — <strong>${pct(Math.abs(diff))}</strong> bajo el promedio (${pct(avg)}). Rendimiento bajo vs la curva.`;
     return `<div class="${cls}">${icono} <span class="anomalia-ticker">${r.ticker}</span> · ${r.tipo} · Vence ${fmtFecha(r.vencimiento)} · ${texto}</div>`;
   }).join('');
   wrap.style.display = 'block';
