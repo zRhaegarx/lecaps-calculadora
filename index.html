@@ -207,6 +207,58 @@
     </div>
   </div>
 
+
+  <!-- COMPARADOR -->
+  <div class="card">
+    <div class="ptitle">⚖️ Comparador de Instrumentos</div>
+    <div style="margin-bottom:16px;">
+      <label class="lbl">Monto a invertir ($)</label>
+      <input type="number" id="cmp-monto" value="1000000" placeholder="1000000" style="max-width:260px;">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="sim-grid">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:11px;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:12px;">Opcion A</div>
+        <div style="margin-bottom:10px;">
+          <label class="lbl">Instrumento</label>
+          <select id="cmp-a-inst"><option value="">— Seleccionar —</option></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div><label class="lbl">Comision (%)</label><input type="number" id="cmp-a-com" value="0.50" step="0.01" min="0"></div>
+          <div><label class="lbl">Imp. D&C (%)</label><input type="number" id="cmp-a-idc" value="0.60" step="0.01" min="0"></div>
+        </div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;">
+        <div style="font-size:11px;color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;font-weight:700;margin-bottom:12px;">Opcion B</div>
+        <div style="margin-bottom:10px;">
+          <label class="lbl">Instrumento</label>
+          <select id="cmp-b-inst"><option value="">— Seleccionar —</option></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div><label class="lbl">Comision (%)</label><input type="number" id="cmp-b-com" value="0.50" step="0.01" min="0"></div>
+          <div><label class="lbl">Imp. D&C (%)</label><input type="number" id="cmp-b-idc" value="0.60" step="0.01" min="0"></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <button class="btn bp" onclick="comparar()">Comparar</button>
+    </div>
+    <div id="cmp-res" style="display:none;margin-top:18px;">
+      <div style="border-top:1px solid var(--border);padding-top:16px;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:8px 12px;font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;background:var(--bg);border-bottom:1px solid var(--border);">Metrica</th>
+              <th style="text-align:right;padding:8px 12px;font-size:10px;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;background:var(--bg);border-bottom:1px solid var(--border);" id="cmp-th-a">Opcion A</th>
+              <th style="text-align:right;padding:8px 12px;font-size:10px;color:var(--accent2);letter-spacing:1.5px;text-transform:uppercase;background:var(--bg);border-bottom:1px solid var(--border);" id="cmp-th-b">Opcion B</th>
+            </tr>
+          </thead>
+          <tbody id="cmp-tbody"></tbody>
+        </table>
+        <div id="cmp-ganador" style="margin-top:14px;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- TABLA -->
   <div class="card" style="padding:0;overflow:hidden;margin-bottom:22px;">
     <div class="th">
@@ -442,9 +494,11 @@ function renderC(data){
 }
 
 function renderSS(data){
-  const sel=document.getElementById('ss');
-  sel.innerHTML='<option value="">— Seleccionar —</option>'+
+  const opts = '<option value="">— Seleccionar —</option>'+
     data.filter(r=>r.tea!=null).map(r=>`<option value="${r.ticker}">${r.ticker} · ${r.vencimiento} · TEA ${pct(r.tea)}</option>`).join('');
+  document.getElementById('ss').innerHTML = opts;
+  document.getElementById('cmp-a-inst').innerHTML = opts;
+  document.getElementById('cmp-b-inst').innerHTML = opts;
 }
 
 function simular(){
@@ -487,6 +541,101 @@ function simular(){
   document.getElementById('n4').textContent = pct(rendNeto);
   document.getElementById('sres').classList.add('on');
 }
+
+function calcNeto(r, monto, pcom, pidc){
+  const lams      = Math.floor((monto / r.precio) * 100) / 100;
+  const inv       = lams * r.precio;
+  const pagoBruto = lams * r.pagoFinal;
+  const costoComision   = inv * pcom;
+  const idcCompra       = inv * pidc;
+  const idcAmortizacion = pagoBruto * pidc;
+  const costoEntrada    = inv + costoComision + idcCompra;
+  const cobroNeto       = pagoBruto - idcAmortizacion;
+  const ganNeta         = cobroNeto - costoEntrada;
+  const totalCostos     = costoComision + idcCompra + idcAmortizacion;
+  const teaNeta         = (Math.pow(cobroNeto / costoEntrada, 365 / r.d) - 1) * 100;
+  const temNeta         = (Math.pow(1 + teaNeta / 100, 1 / 12) - 1) * 100;
+  const rendNeto        = ganNeta / costoEntrada * 100;
+  return { inv, pagoBruto, ganNeta, totalCostos, teaNeta, temNeta, rendNeto, cobroNeto };
+}
+
+function comparar(){
+  const monto = parseFloat(document.getElementById('cmp-monto').value);
+  const tkA   = document.getElementById('cmp-a-inst').value;
+  const tkB   = document.getElementById('cmp-b-inst').value;
+  if(!monto || !tkA || !tkB) return;
+
+  const rA = rows.find(x => x.ticker === tkA);
+  const rB = rows.find(x => x.ticker === tkB);
+  if(!rA?.precio || !rB?.precio) return;
+
+  const comA = parseFloat(document.getElementById('cmp-a-com').value) / 100 || 0;
+  const idcA = parseFloat(document.getElementById('cmp-a-idc').value) / 100 || 0;
+  const comB = parseFloat(document.getElementById('cmp-b-com').value) / 100 || 0;
+  const idcB = parseFloat(document.getElementById('cmp-b-idc').value) / 100 || 0;
+
+  const nA = calcNeto(rA, monto, comA, idcA);
+  const nB = calcNeto(rB, monto, comB, idcB);
+
+  document.getElementById('cmp-th-a').textContent = rA.ticker;
+  document.getElementById('cmp-th-b').textContent = rB.ticker;
+
+  const mejor = (vA, vB, mayorEsMejor=true) => {
+    if(mayorEsMejor) return vA > vB ? ['win','',''] : vA < vB ? ['','win',''] : ['','',''];
+    return vA < vB ? ['win','',''] : vA > vB ? ['','win',''] : ['','',''];
+  };
+
+  const filas = [
+    { label: 'Vencimiento',        vA: rA.vencimiento,      vB: rB.vencimiento,      fmt: v=>v,          cmp: false },
+    { label: 'Días',               vA: rA.d,                vB: rB.d,                fmt: v=>v+' días',  cmp: false },
+    { label: 'Precio (Px)',        vA: rA.precio,           vB: rB.precio,           fmt: v=>v.toFixed(3), cmp: false },
+    { label: 'Pago al vencimiento',vA: nA.pagoBruto,        vB: nB.pagoBruto,        fmt: ars,           mayor: true },
+    { label: 'Total costos',       vA: nA.totalCostos,      vB: nB.totalCostos,      fmt: ars,           mayor: false },
+    { label: 'Ganancia neta',      vA: nA.ganNeta,          vB: nB.ganNeta,          fmt: ars,           mayor: true },
+    { label: 'Cobro neto',         vA: nA.cobroNeto,        vB: nB.cobroNeto,        fmt: ars,           mayor: true },
+    { label: 'TEA neta',           vA: nA.teaNeta,          vB: nB.teaNeta,          fmt: v=>pct(v),     mayor: true },
+    { label: 'TEM neta',           vA: nA.temNeta,          vB: nB.temNeta,          fmt: v=>pct(v),     mayor: true },
+    { label: 'Rendimiento neto',   vA: nA.rendNeto,         vB: nB.rendNeto,         fmt: v=>pct(v),     mayor: true },
+    { label: 'USD Breakeven',      vA: rA.breakeven,        vB: rB.breakeven,        fmt: v=>v?'$ '+v.toFixed(2):'–', cmp: false },
+  ];
+
+  document.getElementById('cmp-tbody').innerHTML = filas.map(f => {
+    let clsA = '', clsB = '';
+    if(f.cmp !== false && f.vA != null && f.vB != null){
+      const [wA, wB] = mejor(f.vA, f.vB, f.mayor !== false);
+      clsA = wA; clsB = wB;
+    }
+    const styleA = clsA==='win' ? 'color:var(--green);font-weight:700' : '';
+    const styleB = clsB==='win' ? 'color:var(--green);font-weight:700' : '';
+    return `<tr style="border-bottom:1px solid rgba(30,45,69,.5)">
+      <td style="padding:10px 12px;color:var(--muted);font-size:12px;">${f.label}</td>
+      <td style="padding:10px 12px;text-align:right;${styleA}">${f.vA!=null?f.fmt(f.vA):'–'} ${clsA==='win'?'✓':''}</td>
+      <td style="padding:10px 12px;text-align:right;${styleB}">${f.vB!=null?f.fmt(f.vB):'–'} ${clsB==='win'?'✓':''}</td>
+    </tr>`;
+  }).join('');
+
+  // Ganador
+  const ganEl = document.getElementById('cmp-ganador');
+  if(nA.teaNeta > nB.teaNeta){
+    ganEl.style.background = 'rgba(0,212,255,.08)';
+    ganEl.style.border = '1px solid rgba(0,212,255,.2)';
+    ganEl.style.color = 'var(--accent)';
+    ganEl.innerHTML = `✅ <strong>${rA.ticker}</strong> ofrece mejor TEA neta: ${pct(nA.teaNeta)} vs ${pct(nB.teaNeta)}`;
+  } else if(nB.teaNeta > nA.teaNeta){
+    ganEl.style.background = 'rgba(0,255,157,.08)';
+    ganEl.style.border = '1px solid rgba(0,255,157,.2)';
+    ganEl.style.color = 'var(--accent2)';
+    ganEl.innerHTML = `✅ <strong>${rB.ticker}</strong> ofrece mejor TEA neta: ${pct(nB.teaNeta)} vs ${pct(nA.teaNeta)}`;
+  } else {
+    ganEl.style.background = 'rgba(100,116,139,.08)';
+    ganEl.style.border = '1px solid rgba(100,116,139,.2)';
+    ganEl.style.color = 'var(--muted)';
+    ganEl.innerHTML = `= Ambos instrumentos tienen la misma TEA neta`;
+  }
+
+  document.getElementById('cmp-res').style.display = 'block';
+}
+
 
 function setSort(col){
   if(sortCol === col) sortAsc = !sortAsc;
