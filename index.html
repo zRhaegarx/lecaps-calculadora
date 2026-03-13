@@ -12,6 +12,20 @@
     --accent:#00d4ff; --accent2:#00ff9d; --warn:#ff6b35;
     --text:#e2e8f0; --muted:#64748b; --green:#00ff9d; --red:#ff4757;
   }
+  body.light {
+    --bg:#f0f4f8; --surface:#ffffff; --surface2:#e8edf3; --border:#d1dae6;
+    --accent:#0077aa; --accent2:#007a4d; --warn:#c0440a;
+    --text:#1a2235; --muted:#64748b; --green:#007a4d; --red:#cc2233;
+  }
+  body.light body::before { display:none; }
+  .theme-btn{background:var(--surface2);border:1px solid var(--border);border-radius:20px;
+             padding:6px 14px;font-size:11px;color:var(--muted);cursor:pointer;
+             font-family:'JetBrains Mono',monospace;letter-spacing:1px;transition:all .2s;}
+  .theme-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .share-btn{background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:20px;
+             padding:6px 14px;font-size:11px;color:var(--accent);cursor:pointer;
+             font-family:'JetBrains Mono',monospace;letter-spacing:1px;transition:all .2s;}
+  .share-btn:hover{background:rgba(0,212,255,.15);}
   *{margin:0;padding:0;box-sizing:border-box;}
   body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;min-height:100vh;}
   body::before{content:'';position:fixed;top:-50%;left:-50%;width:200%;height:200%;
@@ -142,6 +156,8 @@
       <div><h1>LECAPS</h1><div class="sub">Calculadora · Argentina</div></div>
       <div class="badges">
         <span id="lu" style="font-size:11px;color:var(--muted)">–</span>
+        <button class="theme-btn" onclick="toggleTema()" id="temaBtn">☀️ Modo claro</button>
+        <button class="share-btn" onclick="compartir()">🔗 Compartir</button>
         <div class="badge badge-mep">💵 MEP: <strong id="mepVal">–</strong></div>
         <div class="badge" id="mercadoBadge"><div class="dot" id="mercadoDot"></div><span id="mercadoTxt">–</span></div>
       </div>
@@ -158,6 +174,36 @@
     <div class="sc"><div class="sl">Mejor TEA</div><div class="sv" id="sb2">–</div></div>
     <div class="sc"><div class="sl">Dólar MEP</div><div class="sv" style="color:#a78bfa" id="sb3">–</div></div>
     <div class="sc"><div class="sl">Instrumentos</div><div class="sv a" id="sc">–</div></div>
+  </div>
+
+  <!-- TABLA -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:22px;">
+    <div class="th">
+      <div class="ptitle" style="margin:0">📊 Instrumentos LECAPS</div>
+      <div class="brow">
+        <span id="spl" class="hidden"><span class="spin"></span> Actualizando...</span>
+        <button class="btn bs" style="padding:7px 14px;font-size:11px;" onclick="cargarPrecios()" id="br">↻ Actualizar</button>
+      </div>
+    </div>
+
+    <!-- FILTRO COLUMNAS -->
+    <div style="padding:14px 22px;border-bottom:1px solid var(--border);">
+      <div class="col-filter-title">👁 Columnas visibles</div>
+      <div class="col-checks" id="colChecks"></div>
+    </div>
+
+    <div class="ts">
+      <table>
+        <thead><tr id="thead"></tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CURVA -->
+  <div class="card">
+    <div class="ptitle" style="margin-bottom:18px">📈 Curva de Rendimiento</div>
+    <div class="cc"><canvas id="ch"></canvas></div>
   </div>
 
   <!-- SIMULADOR -->
@@ -279,34 +325,47 @@
     </div><!-- fin accordion-body cmp -->
   </div>
 
-  <!-- TABLA -->
-  <div class="card" style="padding:0;overflow:hidden;margin-bottom:22px;">
-    <div class="th">
-      <div class="ptitle" style="margin:0">📊 Instrumentos LECAPS</div>
-      <div class="brow">
-        <span id="spl" class="hidden"><span class="spin"></span> Actualizando...</span>
-        <button class="btn bs" style="padding:7px 14px;font-size:11px;" onclick="cargarPrecios()" id="br">↻ Actualizar</button>
+  <!-- CALCULADORA INVERSA -->
+  <div class="card">
+    <div class="accordion-header" onclick="toggleAcordeon('inv')">
+      <div class="ptitle" style="margin:0">🎯 Calculadora Inversa</div>
+      <span class="accordion-arrow" id="arrow-inv">▼</span>
+    </div>
+    <div class="accordion-body" id="body-inv">
+      <div style="height:16px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;" class="sim-grid">
+        <div>
+          <label class="lbl">Ganancia deseada ($)</label>
+          <input type="number" id="inv-ganancia" value="100000" placeholder="100000">
+          <div class="hint">Ganancia neta que querés obtener</div>
+        </div>
+        <div>
+          <label class="lbl">Instrumento</label>
+          <select id="inv-inst"><option value="">— Seleccionar —</option></select>
+        </div>
+        <div>
+          <label class="lbl">Comisión (%)</label>
+          <input type="number" id="inv-com" value="0.50" step="0.01" min="0">
+        </div>
+        <div>
+          <label class="lbl">Imp. D&C (%)</label>
+          <input type="number" id="inv-idc" value="0.60" step="0.01" min="0">
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <button class="btn bp" onclick="calcularInversa()">Calcular</button>
+      </div>
+      <div id="inv-res" style="display:none;margin-top:18px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:18px;">
+        <div class="sg">
+          <div><span class="si-lbl">Monto a invertir</span><div class="si-val" id="inv-r1">–</div></div>
+          <div><span class="si-lbl">Pago al vencimiento</span><div class="si-val" id="inv-r2">–</div></div>
+          <div><span class="si-lbl">Ganancia neta</span><div class="si-val" id="inv-r3">–</div></div>
+          <div><span class="si-lbl">Total costos</span><div class="si-val" style="color:var(--warn)" id="inv-r4">–</div></div>
+          <div><span class="si-lbl">TEA neta</span><div class="si-val" id="inv-r5">–</div></div>
+          <div><span class="si-lbl">Días restantes</span><div class="si-val" id="inv-r6">–</div></div>
+        </div>
       </div>
     </div>
-
-    <!-- FILTRO COLUMNAS -->
-    <div style="padding:14px 22px;border-bottom:1px solid var(--border);">
-      <div class="col-filter-title">👁 Columnas visibles</div>
-      <div class="col-checks" id="colChecks"></div>
-    </div>
-
-    <div class="ts">
-      <table>
-        <thead><tr id="thead"></tr></thead>
-        <tbody id="tb"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- CURVA -->
-  <div class="card">
-    <div class="ptitle" style="margin-bottom:18px">📈 Curva de Rendimiento</div>
-    <div class="cc"><canvas id="ch"></canvas></div>
   </div>
 
   <footer>
@@ -519,6 +578,12 @@ function renderSS(data){
   document.getElementById('ss').innerHTML = opts;
   document.getElementById('cmp-a-inst').innerHTML = opts;
   document.getElementById('cmp-b-inst').innerHTML = opts;
+  document.getElementById('inv-inst').innerHTML = opts;
+  // Aplicar ticker de URL si existe
+  if(window._urlTicker){
+    document.getElementById('ss').value = window._urlTicker;
+    window._urlTicker = null;
+  }
 }
 
 function simular(){
@@ -711,6 +776,81 @@ function actualizarBadgeMercado() {
 
 actualizarBadgeMercado();
 setInterval(actualizarBadgeMercado, 60 * 1000); // revisar cada minuto
+
+function calcularInversa(){
+  const ganDeseada = parseFloat(document.getElementById('inv-ganancia').value);
+  const tk         = document.getElementById('inv-inst').value;
+  const pcom       = parseFloat(document.getElementById('inv-com').value) / 100 || 0;
+  const pidc       = parseFloat(document.getElementById('inv-idc').value) / 100 || 0;
+  if(!ganDeseada || !tk) return;
+  const r = rows.find(x => x.ticker === tk);
+  if(!r?.precio) return;
+
+  // Ganancia neta = cobroNeto - costoEntrada
+  // cobroNeto = lams * pagoFinal * (1 - pidc)
+  // costoEntrada = lams * precio * (1 + pcom + pidc)
+  // ganNeta = lams * [pagoFinal*(1-pidc) - precio*(1+pcom+pidc)]
+  // lams = ganDeseada / [pagoFinal*(1-pidc) - precio*(1+pcom+pidc)]
+  const factorGan = r.pagoFinal * (1 - pidc) - r.precio * (1 + pcom + pidc);
+  if(factorGan <= 0) return;
+  const lamsNecesarios = ganDeseada / factorGan;
+  const montoNecesario = lamsNecesarios * r.precio;
+  const lams           = Math.ceil(lamsNecesarios * 100) / 100;
+  const inv            = lams * r.precio;
+  const pagoBruto      = lams * r.pagoFinal;
+  const costoComision  = inv * pcom;
+  const idcCompra      = inv * pidc;
+  const idcAmort       = pagoBruto * pidc;
+  const totalCostos    = costoComision + idcCompra + idcAmort;
+  const costoEntrada   = inv + costoComision + idcCompra;
+  const cobroNeto      = pagoBruto - idcAmort;
+  const ganNeta        = cobroNeto - costoEntrada;
+  const teaNeta        = (Math.pow(cobroNeto / costoEntrada, 365 / r.d) - 1) * 100;
+
+  document.getElementById('inv-r1').textContent = ars(inv);
+  document.getElementById('inv-r2').textContent = ars(pagoBruto);
+  document.getElementById('inv-r3').textContent = ars(ganNeta);
+  document.getElementById('inv-r4').textContent = ars(totalCostos);
+  document.getElementById('inv-r5').textContent = pct(teaNeta);
+  document.getElementById('inv-r6').textContent = r.d + ' días';
+  document.getElementById('inv-res').style.display = 'block';
+}
+
+let modoClaro = false;
+function toggleTema(){
+  modoClaro = !modoClaro;
+  document.body.classList.toggle('light', modoClaro);
+  document.getElementById('temaBtn').textContent = modoClaro ? '🌙 Modo oscuro' : '☀️ Modo claro';
+}
+
+function compartir(){
+  const tk  = document.getElementById('ss').value;
+  const m   = document.getElementById('sm2').value;
+  const com = document.getElementById('comision').value;
+  const idc = document.getElementById('idc').value;
+  const params = new URLSearchParams();
+  if(tk)  params.set('tk', tk);
+  if(m)   params.set('m', m);
+  if(com) params.set('com', com);
+  if(idc) params.set('idc', idc);
+  const url = window.location.origin + window.location.pathname + '?' + params.toString();
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = document.querySelector('.share-btn');
+    const orig = btn.textContent;
+    btn.textContent = '✅ Link copiado!';
+    setTimeout(() => btn.textContent = orig, 2500);
+  });
+}
+
+// Leer parámetros de URL al cargar
+function leerParams(){
+  const p = new URLSearchParams(window.location.search);
+  if(p.get('m'))   document.getElementById('sm2').value = p.get('m');
+  if(p.get('com')) document.getElementById('comision').value = p.get('com');
+  if(p.get('idc')) document.getElementById('idc').value = p.get('idc');
+  if(p.get('tk'))  window._urlTicker = p.get('tk'); // se aplica después de cargar los datos
+}
+leerParams();
 
 function toggleAcordeon(id){
   const body  = document.getElementById('body-' + id);
