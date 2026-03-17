@@ -146,6 +146,22 @@
   .anomalia-ticker{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-right:8px;}
 
   @media(max-width:700px){.sim-grid{grid-template-columns:1fr!important;}}
+  .search-box{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);
+              border-radius:8px;padding:8px 14px;transition:border-color .2s;}
+  .search-box:focus-within{border-color:var(--accent);}
+  .search-box input{background:none;border:none;outline:none;color:var(--text);
+                    font-family:'JetBrains Mono',monospace;font-size:13px;width:100%;}
+  .search-box span{color:var(--muted);font-size:14px;}
+  .tbl-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 22px;border-bottom:1px solid var(--border);}
+  .ctrl-group{display:flex;align-items:center;gap:8px;}
+  .ctrl-lbl{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;white-space:nowrap;}
+  .ctrl-input{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 12px;
+              color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;
+              width:90px;transition:border-color .2s;}
+  .ctrl-input:focus{border-color:var(--accent);}
+  .vs-pf-pos{color:var(--green);font-weight:700;}
+  .vs-pf-neg{color:var(--red);font-weight:700;}
+  .gan-dir{color:#fbbf24;font-weight:600;}
 
   /* Acordeón */
   .accordion-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
@@ -211,6 +227,26 @@
       <div class="brow">
         <span id="spl" class="hidden"><span class="spin"></span> Actualizando...</span>
         <button class="btn bs" style="padding:7px 14px;font-size:11px;" onclick="cargarPrecios()" id="br">↻ Actualizar</button>
+      </div>
+    </div>
+
+    <!-- CONTROLES -->
+    <div class="tbl-controls">
+      <div class="search-box" style="flex:1;min-width:200px;">
+        <span>🔍</span>
+        <input type="text" id="tickerSearch" placeholder="Buscar por ticker..." oninput="filtrarTabla()">
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-lbl">Comisión broker (%)</span>
+        <input type="number" class="ctrl-input" id="tblComision" value="0.50" step="0.01" min="0" oninput="renderT(rows)">
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-lbl">Imp. D&C (%)</span>
+        <input type="number" class="ctrl-input" id="tblIdc" value="0.60" step="0.01" min="0" oninput="renderT(rows)">
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-lbl">TNA Plazo Fijo (%)</span>
+        <input type="number" class="ctrl-input" id="tblTnaPF" value="30" step="0.1" min="0" oninput="renderT(rows)">
       </div>
     </div>
 
@@ -430,6 +466,8 @@ const COLS = [
   { id:'tem',         label:'TEM',          default: false },
   { id:'tea',         label:'TEA',          default: true },
   { id:'breakeven',   label:'USD Breakeven',default: true },
+  { id:'gandir',      label:'Ganancia Directa', default: true },
+  { id:'vspf',        label:'vs Plazo Fijo',    default: true },
 ];
 
 let visibleCols = {};
@@ -514,7 +552,8 @@ async function cargarPrecios(){
         varAbs = x.precio - x.cierreAnterior;
         varPct = (varAbs / x.cierreAnterior) * 100;
       }
-      return { ...x, d, mes: (d/30.4).toFixed(1), ...t, breakeven, varPct, varAbs };
+      const gandir = x.precio && x.pagoFinal ? (x.pagoFinal / x.precio - 1) * 100 : null;
+      return { ...x, d, mes: (d/30.4).toFixed(1), ...t, breakeven, varPct, varAbs, gandir };
     }).filter(x => x.d > 0).sort((a,b) => a.d - b.d);
 
     renderT(rows); renderS(rows); renderC(rows); renderSS(rows); renderAnomalias(rows);
@@ -565,6 +604,22 @@ function renderT(data){
     if(visibleCols.tem)       cells.push(`<td class="rc">${pct(r.tem)}</td>`);
     if(visibleCols.tea)       cells.push(`<td class="rc ${r.tea===best&&r.tea!=null?'best':''}">${pct(r.tea)} ${r.tea===best&&r.tea!=null?'★':''}</td>`);
     if(visibleCols.breakeven) cells.push(`<td class="mep-cell">${r.breakeven ? '$ '+r.breakeven.toFixed(2) : '–'}</td>`);
+    if(visibleCols.gandir) cells.push(`<td class="gan-dir">${r.gandir!=null ? '+'+r.gandir.toFixed(2).replace('.',',')+' %' : '–'}</td>`);
+    if(visibleCols.vspf){
+      const tnaPF  = parseFloat(document.getElementById('tblTnaPF')?.value)||0;
+      const pcom   = parseFloat(document.getElementById('tblComision')?.value)/100||0;
+      const pidc   = parseFloat(document.getElementById('tblIdc')?.value)/100||0;
+      // Ganancia directa LECAP neta para estos días
+      const pxEfectivo  = r.precio * (1 + pcom + pidc);
+      const cobroNeto   = r.pagoFinal * (1 - pidc);
+      const ganLecap    = r.d > 0 && pxEfectivo > 0 ? (cobroNeto / pxEfectivo - 1) * 100 : null;
+      // Ganancia directa Plazo Fijo para los mismos días (TNA simple)
+      const ganPF       = r.d > 0 ? (tnaPF / 100) * (r.d / 365) * 100 : null;
+      const diff = ganLecap != null && ganPF != null ? ganLecap - ganPF : null;
+      const cls  = diff >= 0 ? 'vs-pf-pos' : 'vs-pf-neg';
+      const sign = diff >= 0 ? '+' : '';
+      cells.push(`<td class="${cls}">${diff != null ? sign+diff.toFixed(2).replace('.',',')+' pp' : '–'}</td>`);
+    }
     return `<tr>${cells.join('')}</tr>`;
   }).join('');
 }
@@ -941,6 +996,12 @@ initColFilter();
     document.getElementById('mainContent').style.display = 'block';
   }
 })();
+
+function filtrarTabla(){
+  const q = document.getElementById('tickerSearch').value.toUpperCase().trim();
+  const filtradas = q ? rows.filter(r => r.ticker.includes(q)) : rows;
+  renderT(filtradas);
+}
 </script>
 </body>
 </html>
