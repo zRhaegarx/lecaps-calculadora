@@ -237,6 +237,10 @@
         <input type="text" id="tickerSearch" placeholder="Buscar por ticker..." oninput="filtrarTabla()">
       </div>
       <div class="ctrl-group">
+        <span class="ctrl-lbl">Monto ($)</span>
+        <input type="number" class="ctrl-input" id="tblMonto" value="1000000" step="100000" min="0" oninput="renderT(rows)" style="width:130px;">
+      </div>
+      <div class="ctrl-group">
         <span class="ctrl-lbl">Comisión broker (%)</span>
         <input type="number" class="ctrl-input" id="tblComision" value="0.50" step="0.01" min="0" oninput="renderT(rows)">
       </div>
@@ -466,6 +470,8 @@ const COLS = [
   { id:'tem',         label:'TEM',          default: false },
   { id:'tea',         label:'TEA',          default: true },
   { id:'breakeven',   label:'USD Breakeven',default: true },
+  { id:'monto',       label:'Monto a invertir', default: false },
+  { id:'totalrecibir',label:'Total a recibir',  default: false },
   { id:'gandir',      label:'Ganancia Directa', default: true },
   { id:'vspf',        label:'vs Plazo Fijo',    default: true },
 ];
@@ -516,7 +522,7 @@ function initColFilter(){
 }
 
 function fmtFecha(v){ const [y,m,d]=v.split("-"); return d+"/"+m+"/"+y; }
-function dias(v){ const h=new Date(); h.setHours(0,0,0,0); return Math.max(0,Math.round((new Date(v+'T00:00:00')-h)/86400000)); }
+function dias(v){ const h=new Date(); h.setHours(0,0,0,0); return Math.max(0,Math.round((new Date(v+'T00:00:00')-h)/86400000)-1); }
 function tasas(px,pf,d){ if(!px||!pf||d<=0) return {}; const r=pf/px,tea=(Math.pow(r,365/d)-1)*100,tem=(Math.pow(1+tea/100,1/12)-1)*100; return {tea,tem,tna:tem*12}; }
 function pct(n,d=2){ return n==null||isNaN(n)?'–':n.toFixed(d).replace('.',',')+' %'; }
 function ars(n){ return n!=null?'$ '+Math.round(n).toLocaleString('es-AR'):'–'; }
@@ -604,6 +610,22 @@ function renderT(data){
     if(visibleCols.tem)       cells.push(`<td class="rc">${pct(r.tem)}</td>`);
     if(visibleCols.tea)       cells.push(`<td class="rc ${r.tea===best&&r.tea!=null?'best':''}">${pct(r.tea)} ${r.tea===best&&r.tea!=null?'★':''}</td>`);
     if(visibleCols.breakeven) cells.push(`<td class="mep-cell">${r.breakeven ? '$ '+r.breakeven.toFixed(2) : '–'}</td>`);
+    if(visibleCols.monto){
+      const m = parseFloat(document.getElementById('tblMonto')?.value)||0;
+      const pcom = parseFloat(document.getElementById('tblComision')?.value)/100||0;
+      const pidc = parseFloat(document.getElementById('tblIdc')?.value)/100||0;
+      const lams = m && r.precio ? Math.floor((m/r.precio)*100)/100 : 0;
+      const inv  = lams * r.precio * (1 + pcom + pidc);
+      cells.push(`<td class="pc">${m ? '$ '+Math.round(inv).toLocaleString('es-AR') : '–'}</td>`);
+    }
+    if(visibleCols.totalrecibir){
+      const m = parseFloat(document.getElementById('tblMonto')?.value)||0;
+      const pcom = parseFloat(document.getElementById('tblComision')?.value)/100||0;
+      const pidc = parseFloat(document.getElementById('tblIdc')?.value)/100||0;
+      const lams = m && r.precio ? Math.floor((m/r.precio)*100)/100 : 0;
+      const cobro = lams * r.pagoFinal * (1 - pidc);
+      cells.push(`<td class="rc">${m ? '$ '+Math.round(cobro).toLocaleString('es-AR') : '–'}</td>`);
+    }
     if(visibleCols.gandir) cells.push(`<td class="gan-dir">${r.gandir!=null ? '+'+r.gandir.toFixed(2).replace('.',',')+' %' : '–'}</td>`);
     if(visibleCols.vspf){
       const tnaPF  = parseFloat(document.getElementById('tblTnaPF')?.value)||0;
