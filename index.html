@@ -420,7 +420,7 @@
     <!-- TABLA CER -->
     <div class="card" style="padding:0;overflow:hidden;margin-bottom:22px;">
       <div class="th">
-        <div class="ptitle" style="margin:0">📊 Instrumentos CER · LECER & BONCER — TIR Nominal</div>
+        <div class="ptitle" style="margin:0">📊 Instrumentos CER · LECER — TIR Real</div>
         <div class="brow">
           <span id="cer-spl" class="hidden"><span class="spin"></span> Actualizando...</span>
           <button class="btn bs" style="padding:7px 14px;font-size:11px;" onclick="cargarCER()" id="cer-br">↻ Actualizar</button>
@@ -990,13 +990,11 @@ let rowsCer = [], grafCer = null;
 
 const COLS_CER = [
   { id:'ticker',    label:'Ticker',       always: true },
-  { id:'tipo',      label:'Tipo',         default: true },
   { id:'venc',      label:'Vencimiento',  default: true },
   { id:'dias',      label:'Días',         default: true },
   { id:'precio',    label:'Precio',       default: true },
   { id:'var',       label:'Var. Diaria',  default: true },
-  { id:'treal',     label:'TIR',          default: true },
-  { id:'breakeven', label:'USD Breakeven',default: true },
+  { id:'treal',     label:'TIR Real',     default: true },
 ];
 
 function tasaReal(px, d){
@@ -1083,22 +1081,17 @@ function renderCerT(data){
   const best = Math.max(...sorted.filter(r=>r.treal!=null).map(r=>r.treal));
 
   tb.innerHTML = sorted.map(r => {
-    const tipoBadge = r.tipo === 'BONCER'
-      ? `<span style="background:rgba(167,139,250,.15);color:#a78bfa;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700">BONCER</span>`
-      : `<span style="background:rgba(0,212,255,.12);color:var(--accent);padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700">LECER</span>`;
     const varCell = r.varPct==null ? '<td class="var-neu">–</td>'
       : r.varPct>0 ? `<td class="var-up">▲ ${r.varPct.toFixed(2).replace('.',',')}%</td>`
       : r.varPct<0 ? `<td class="var-dn">▼ ${Math.abs(r.varPct).toFixed(2).replace('.',',')}%</td>`
       : '<td class="var-neu">= 0,00%</td>';
     return `<tr>
       <td><span class="tk">${r.ticker}</span></td>
-      <td>${tipoBadge}</td>
       <td>${fmtFecha(r.vencimiento)}</td>
       <td class="dc">${r.d}</td>
       <td class="pc">${r.precio ? r.precio.toFixed(3) : '–'}</td>
       ${varCell}
       <td class="rc ${r.treal===best&&r.treal!=null?'best':''}">${pct(r.treal)} ${r.treal===best&&r.treal!=null?'★':''}</td>
-      <td class="mep-cell">${r.breakeven ? '$ '+r.breakeven.toFixed(2) : '–'}</td>
     </tr>`;
   }).join('');
 }
